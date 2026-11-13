@@ -948,20 +948,6 @@
 	border-left: 4px solid #009905;
 }
 
-.js-skill.sc-009bed .js-name,
-.js-seg.sc-009bed,
-.js-card.sc-009bed .js-card-name,
-.js-menu.sc-009bed .js-menu-title,
-.js-row.sc-009bed .js-row-text
-{
-	color: #009bed;
-}
-
-.js-skill.sc-009bed
-{
-	border-left: 4px solid #009bed;
-}
-
 .js-skill.sc-00d5ff .js-name,
 .js-seg.sc-00d5ff,
 .js-card.sc-00d5ff .js-card-name,
@@ -1130,20 +1116,6 @@
 	border-left: 4px solid #1fe070;
 }
 
-.js-skill.sc-22c55e .js-name,
-.js-seg.sc-22c55e,
-.js-card.sc-22c55e .js-card-name,
-.js-menu.sc-22c55e .js-menu-title,
-.js-row.sc-22c55e .js-row-text
-{
-	color: #22c55e;
-}
-
-.js-skill.sc-22c55e
-{
-	border-left: 4px solid #22c55e;
-}
-
 .js-skill.sc-2effc7 .js-name,
 .js-seg.sc-2effc7,
 .js-card.sc-2effc7 .js-card-name,
@@ -1226,20 +1198,6 @@
 .js-skill.sc-34ebd5
 {
 	border-left: 4px solid #34ebd5;
-}
-
-.js-skill.sc-37afef .js-name,
-.js-seg.sc-37afef,
-.js-card.sc-37afef .js-card-name,
-.js-menu.sc-37afef .js-menu-title,
-.js-row.sc-37afef .js-row-text
-{
-	color: #37afef;
-}
-
-.js-skill.sc-37afef
-{
-	border-left: 4px solid #37afef;
 }
 
 .js-skill.sc-383838 .js-name,
@@ -1564,20 +1522,6 @@
 	border-left: 4px solid #5fd98a;
 }
 
-.js-skill.sc-646c79 .js-name,
-.js-seg.sc-646c79,
-.js-card.sc-646c79 .js-card-name,
-.js-menu.sc-646c79 .js-menu-title,
-.js-row.sc-646c79 .js-row-text
-{
-	color: #646c79;
-}
-
-.js-skill.sc-646c79
-{
-	border-left: 4px solid #646c79;
-}
-
 .js-skill.sc-6effc7 .js-name,
 .js-seg.sc-6effc7,
 .js-card.sc-6effc7 .js-card-name,
@@ -1730,20 +1674,6 @@
 .js-skill.sc-81f0c4
 {
 	border-left: 4px solid #81f0c4;
-}
-
-.js-skill.sc-858d9b .js-name,
-.js-seg.sc-858d9b,
-.js-card.sc-858d9b .js-card-name,
-.js-menu.sc-858d9b .js-menu-title,
-.js-row.sc-858d9b .js-row-text
-{
-	color: #858d9b;
-}
-
-.js-skill.sc-858d9b
-{
-	border-left: 4px solid #858d9b;
 }
 
 .js-skill.sc-88a31a .js-name,
@@ -1940,6 +1870,20 @@
 .js-skill.sc-99140b
 {
 	border-left: 4px solid #99140b;
+}
+
+.js-skill.sc-999999 .js-name,
+.js-seg.sc-999999,
+.js-card.sc-999999 .js-card-name,
+.js-menu.sc-999999 .js-menu-title,
+.js-row.sc-999999 .js-row-text
+{
+	color: #999999;
+}
+
+.js-skill.sc-999999
+{
+	border-left: 4px solid #999999;
 }
 
 .js-skill.sc-9ad3f5 .js-name,
@@ -2166,20 +2110,6 @@
 	border-left: 4px solid #adf542;
 }
 
-.js-skill.sc-aeb4bf .js-name,
-.js-seg.sc-aeb4bf,
-.js-card.sc-aeb4bf .js-card-name,
-.js-menu.sc-aeb4bf .js-menu-title,
-.js-row.sc-aeb4bf .js-row-text
-{
-	color: #aeb4bf;
-}
-
-.js-skill.sc-aeb4bf
-{
-	border-left: 4px solid #aeb4bf;
-}
-
 .js-skill.sc-b01e5d .js-name,
 .js-seg.sc-b01e5d,
 .js-card.sc-b01e5d .js-card-name,
@@ -2360,20 +2290,6 @@
 .js-skill.sc-cc7504
 {
 	border-left: 4px solid #cc7504;
-}
-
-.js-skill.sc-ced2d9 .js-name,
-.js-seg.sc-ced2d9,
-.js-card.sc-ced2d9 .js-card-name,
-.js-menu.sc-ced2d9 .js-menu-title,
-.js-row.sc-ced2d9 .js-row-text
-{
-	color: #ced2d9;
-}
-
-.js-skill.sc-ced2d9
-{
-	border-left: 4px solid #ced2d9;
 }
 
 .js-skill.sc-d0d930 .js-name,
@@ -2710,20 +2626,6 @@
 .js-skill.sc-f5cb42
 {
 	border-left: 4px solid #f5cb42;
-}
-
-.js-skill.sc-f6f7f9 .js-name,
-.js-seg.sc-f6f7f9,
-.js-card.sc-f6f7f9 .js-card-name,
-.js-menu.sc-f6f7f9 .js-menu-title,
-.js-row.sc-f6f7f9 .js-row-text
-{
-	color: #f6f7f9;
-}
-
-.js-skill.sc-f6f7f9
-{
-	border-left: 4px solid #f6f7f9;
 }
 
 .js-skill.sc-fa050d .js-name,
