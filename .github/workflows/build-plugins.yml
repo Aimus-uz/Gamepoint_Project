@@ -1,0 +1,83 @@
+name: Build plugins
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["plugins/**", ".github/workflows/build-plugins.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: [GP_ServerFixes]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        run: dotnet publish plugins/${{ matrix.plugin }}/${{ matrix.plugin }}.csproj -c Release -o out/${{ matrix.plugin }}
+
+      - name: Package (addons/counterstrikesharp/plugins/<name>)
+        run: |
+          mkdir -p package/addons/counterstrikesharp/plugins
+          mv out/${{ matrix.plugin }} package/addons/counterstrikesharp/plugins/
+          find package -type f
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.plugin }}
+          path: package/
+
+  # PMM_WeaponSkins (fork of RRimmer/PMM_WeaponSkins, GPL-3.0) restyled to the GAMEPOINT design system.
+  # The menu stylesheet is generated: tools/pmm_ws.base.css + PALETTE in tools/gen_layout.py -> pmm_ws.css.
+  pmm-weaponskins:
+    runs-on: ubuntu-latest
+    env:
+      ROOT: plugins/PMM_WeaponSkins
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate layout and stylesheet
+        run: |
+          python3 $ROOT/tools/gen_layout.py $ROOT/PMM_WeaponSkins
+          # show whether the committed generated files were out of date
+          git status --short $ROOT || true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        run: dotnet publish $ROOT/PMM_WeaponSkins/PMM_WeaponSkins.csproj -c Release -o out/PMM_WeaponSkins
+
+      - name: Package (Server-plugins + Content-addonmanager, like the upstream release)
+        run: |
+          S=package/Server-plugins/counterstrikesharp
+          mkdir -p $S/plugins $S/configs/plugins
+          mv out/PMM_WeaponSkins $S/plugins/
+          rm -f $S/plugins/PMM_WeaponSkins/CounterStrikeSharp.API.dll
+          cp -r $ROOT/configs/plugins/PMM_WeaponSkins $S/configs/plugins/
+          mkdir -p package/Content-addonmanager
+          cp -r $ROOT/PMM_WeaponSkins/panorama package/Content-addonmanager/
+          # generated sources, so they can be committed back if they changed
+          mkdir -p package/generated
+          cp $ROOT/PMM_WeaponSkins/Layout.g.cs $ROOT/PMM_WeaponSkins/panorama/styles/custom_game/pmm_ws.css package/generated/
+          find package -type f | grep -v '_art\|_stickers' | sort
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PMM_WeaponSkins
+          path: package/
