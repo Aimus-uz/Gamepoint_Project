@@ -12,6 +12,8 @@ build.log
 __pycache__/
 release-staging/
 pack.log
+# GAMEPOINT: the panorama .vtex sources are kept so the addon builds as is
 *.vtex
+!PMM_WeaponSkins/panorama/images/custom_game/*.vtex
 *.vtex_c
 players.json

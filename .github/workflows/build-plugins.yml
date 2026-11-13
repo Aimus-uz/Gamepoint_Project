@@ -41,7 +41,8 @@ jobs:
           S=package/Server-plugins/counterstrikesharp
           mkdir -p $S/plugins $S/configs/plugins
           mv out/PMM_WeaponSkins $S/plugins/
-          rm -f $S/plugins/PMM_WeaponSkins/CounterStrikeSharp.API.dll
+          # CounterStrikeSharp already provides these; keep only what the upstream release ships
+          rm -f $S/plugins/PMM_WeaponSkins/CounterStrikeSharp.API.dll $S/plugins/PMM_WeaponSkins/Microsoft.Extensions.*.dll
           cp -r $ROOT/configs/plugins/PMM_WeaponSkins $S/configs/plugins/
           mkdir -p package/Content-addonmanager
           cp -r $ROOT/PMM_WeaponSkins/panorama package/Content-addonmanager/
