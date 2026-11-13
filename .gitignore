@@ -4,3 +4,6 @@ out/
 *.user
 .vs/
 .idea/
+
+# separate plugin, lives outside this repo
+plugins/GP_ServerFixes/

@@ -10,33 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        plugin: [GP_ServerFixes]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-
-      - name: Build
-        run: dotnet publish plugins/${{ matrix.plugin }}/${{ matrix.plugin }}.csproj -c Release -o out/${{ matrix.plugin }}
-
-      - name: Package (addons/counterstrikesharp/plugins/<name>)
-        run: |
-          mkdir -p package/addons/counterstrikesharp/plugins
-          mv out/${{ matrix.plugin }} package/addons/counterstrikesharp/plugins/
-          find package -type f
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.plugin }}
-          path: package/
-
   # PMM_WeaponSkins (fork of RRimmer/PMM_WeaponSkins, GPL-3.0) restyled to the GAMEPOINT design system.
   # The menu stylesheet is generated: tools/pmm_ws.base.css + PALETTE in tools/gen_layout.py -> pmm_ws.css.
   pmm-weaponskins:
