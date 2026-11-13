@@ -56,9 +56,10 @@ jobs:
           name: PMM_WeaponSkins
           path: package/
 
-  # jRandomSkills (fork of Juzlus/jRandomSkills, GPL-3.0) with the GAMEPOINT Panorama HUD.
+  # jRandomSkills Panorama HUD in the GAMEPOINT style. Only the client HUD is ours: the plugin itself is the
+  # unmodified upstream (Juzlus/jRandomSkills, GPL-3.0); its sources are kept here only as the list of skill colours.
   # The HUD stylesheet is generated: BASE in "VPK Addon/tools/build_css.py" + one class per skill colour.
-  jrandomskills:
+  jrandomskills-hud:
     runs-on: ubuntu-latest
     env:
       ROOT: plugins/jRandomSkills
@@ -78,27 +79,13 @@ jobs:
             "$ROOT/jRandomSkills - SRC Files/src"
           git status --short "$ROOT" || true
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-
-      - name: Build
-        run: dotnet publish "$ROOT/jRandomSkills - SRC Files/jRandomSkills.csproj" -c Release -o out/jRandomSkills
-
-      - name: Package (Server-plugins + Content-addonmanager)
+      - name: Package (Content-addonmanager only)
         run: |
-          S=package/Server-plugins/counterstrikesharp
-          P=$S/plugins/jRandomSkills
-          mkdir -p $P $S/gamedata
-          # only what the upstream release ships; CounterStrikeSharp provides the rest
-          for f in jRandomSkills WASDMenuAPI MaxMind.Db Newtonsoft.Json; do cp out/jRandomSkills/$f.dll $P/; done
-          cp -r "$ROOT/jRandomSkills - Server Files/plugins/jRandomSkills/configs" "$ROOT/jRandomSkills - Server Files/plugins/jRandomSkills/languages" $P/
-          cp "$ROOT/jRandomSkills - Server Files/gamedata/"*.json $S/gamedata/
           mkdir -p package/Content-addonmanager
           cp -r "$ROOT/VPK Addon/Content/panorama" package/Content-addonmanager/
           find package -type f | sort
 
       - uses: actions/upload-artifact@v4
         with:
-          name: jRandomSkills
+          name: jRandomSkills_HUD
           path: package/

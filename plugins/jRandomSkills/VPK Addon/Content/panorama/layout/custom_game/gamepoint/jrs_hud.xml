@@ -1,7 +1,7 @@
 <root>
 	<!-- GAMEPOINT skin of the jRandomSkills Panorama HUD (based on simple_skills.xml).
 	     Every id the plugin drives (js-scope, js-skill, js-menu, js-cN, js-sdN, js-ssN, js-mN, js-mfN) is unchanged;
-	     js-track, js-roll and js-div are extra panels that only the stylesheet uses. -->
+	     js-track and js-div are extra panels that only the stylesheet uses. -->
 	<styles>
 		<include src="s2r://panorama/styles/csgostyles.vcss_c" />
 		<include src="s2r://panorama/styles/custom_game/gamepoint/jrs_hud.vcss_c" />
@@ -24,7 +24,6 @@
 				</Panel>
 				<Panel class="js-track" hittest="false">
 					<Panel class="js-cd" hittest="false" />
-					<Panel class="js-roll" hittest="false" />
 				</Panel>
 			</Panel>
 			<Panel id="js-menu" class="js-menu js-off" hittest="false">

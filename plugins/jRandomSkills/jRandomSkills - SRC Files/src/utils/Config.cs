@@ -278,25 +278,23 @@ namespace src.utils
 
                 HtmlHudCustomisation = new HtmlHudCustomisation
                 {
-                    // GAMEPOINT design system colours (fallback HTML HUD); HeaderLineSize also turns on the
-                    // "Your skill" / "Drawing a skill" badge of the Panorama HUD
-                    HeaderLineColor = "#AEB4BF",
-                    HeaderLineSize = "sm",
+                    HeaderLineColor = "#FFFFFF",
+                    HeaderLineSize = "",
                     SkillLineSize = "l",
-                    InfoLineColor = "#F6F7F9",
+                    InfoLineColor = "#FFFFFF",
                     InfoLineSize = "sm",
-                    SkillDescriptionLineColor = "#AEB4BF",
+                    SkillDescriptionLineColor = "#999999",
                     SkillDescriptionLineSize = "sm",
-                    WSADMenuSelectInfoLineColor = "#858D9B",
+                    WSADMenuSelectInfoLineColor = "#999999",
                     WSADMenuSelectInfoLineSize = "sm",
-                    WSADMenuItemLineColor = "#CED2D9",
-                    WSADMenuItemHoverLineColor = "#009BED",
+                    WSADMenuItemLineColor = "white",
+                    WSADMenuItemHoverLineColor = "orange",
                     WSADMenuItemLineSize = "sm",
                     WSADMenuVisibleItems = 3,
                     WSADMenuControllsLineSize = "sm",
-                    WSADMenuControllsLineColor1 = "#37AFEF",
-                    WSADMenuControllsLineColor2 = "#646C79",
-                    WSADMenuControllsLineColor3 = "#22C55E",
+                    WSADMenuControllsLineColor1 = "cyan",
+                    WSADMenuControllsLineColor2 = "white",
+                    WSADMenuControllsLineColor3 = "green",
                 };
 
                 PanoramaHud = new PanoramaHudSettings();
@@ -388,9 +386,8 @@ namespace src.utils
 
         public class PanoramaHudSettings
         {
-            // GAMEPOINT: on by default, using the GAMEPOINT HUD from our addon
-            public bool Enabled { get; set; } = true;
-            public string Layout { get; set; } = "panorama/layout/custom_game/gamepoint/jrs_hud.xml";
+            public bool Enabled { get; set; } = false;
+            public string Layout { get; set; } = "panorama/layout/custom_game/jrandomskills/simple_skills.xml";
             public string Font { get; set; } = "stratum";
             public int FontSize { get; set; } = 100;
         }

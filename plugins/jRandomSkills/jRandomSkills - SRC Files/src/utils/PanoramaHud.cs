@@ -312,8 +312,6 @@ namespace src.utils
             SetClass(player, view, SkillId, "no-info", info == "");
             SetClass(player, view, SkillId, "no-desc", desc.Count == 0);
             SetClass(player, view, SkillId, "no-status", status.Count == 0);
-            // GAMEPOINT: lets the stylesheet show the round-start draw differently (brand strip, running bar)
-            SetClass(player, view, SkillId, "is-draw", drawing);
             SwapClass(player, view, SkillId, ref view.SkillColor, drawing ? "" : ColorClass(center));
             ApplyCooldown(player, view, isDescription ? null : extra, owner, tick);
             if (!view.MenuShown)

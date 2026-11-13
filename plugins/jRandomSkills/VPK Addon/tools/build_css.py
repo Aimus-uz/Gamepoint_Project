@@ -40,7 +40,6 @@ BASE = '''/* GAMEPOINT skin: design-system tokens (Нейтральный / Си
 @define soft: #ced2d9;
 @define accent: #009bed;
 @define accent-bg: #0d2232;
-@define accent-tone: #69c3f3;
 @define danger: #ef4444;
 
 .js-root,
@@ -169,8 +168,7 @@ BASE = '''/* GAMEPOINT skin: design-system tokens (Нейтральный / Си
 	visibility: collapse;
 }
 
-.js-skill.has-cd .js-track,
-.js-skill.is-draw .js-track
+.js-skill.has-cd .js-track
 {
 	visibility: visible;
 }
@@ -187,48 +185,6 @@ BASE = '''/* GAMEPOINT skin: design-system tokens (Нейтральный / Си
 .js-skill.has-cd .js-cd
 {
 	visibility: visible;
-}
-
-/* round start: the skill is being drawn (class is-draw, set by PanoramaHud.ShowSkill) */
-.js-roll
-{
-	horizontal-align: left;
-	width: 30%;
-	height: 100%;
-	background-color: gradient( linear, 0% 0%, 100% 0%, from( #009bed ), to( #f3009a ) );
-	visibility: collapse;
-}
-
-@keyframes 'jrs-roll'
-{
-	0% { transform: translateX( 0px ); }
-	50% { transform: translateX( 262px ); }
-	100% { transform: translateX( 0px ); }
-}
-
-.js-skill.is-draw
-{
-	border-left: 4px solid accent;
-}
-
-.js-skill.is-draw .js-info
-{
-	background-color: accent-bg;
-	color: accent-tone;
-}
-
-.js-skill.is-draw .js-cd
-{
-	visibility: collapse;
-}
-
-.js-skill.is-draw .js-roll
-{
-	visibility: visible;
-	animation-name: jrs-roll;
-	animation-duration: 1.4s;
-	animation-timing-function: ease-in-out;
-	animation-iteration-count: infinite;
 }
 
 /* ---------- effects on you (left column) ---------- */
