@@ -71,6 +71,7 @@ jobs:
 
       - name: Generate HUD stylesheet
         run: |
+          mkdir -p "$ROOT/VPK Addon/Content/panorama/styles/custom_game/gamepoint"
           python3 "$ROOT/VPK Addon/tools/build_css.py" \
             "$ROOT/VPK Addon/Content/panorama/styles/custom_game/gamepoint/jrs_hud.css" \
             "$ROOT/jRandomSkills - Server Files/plugins/jRandomSkills/configs/skillsInfo.json" \
