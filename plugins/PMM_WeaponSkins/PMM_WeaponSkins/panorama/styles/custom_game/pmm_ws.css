@@ -20,7 +20,8 @@
 	horizontal-align: center;
 	vertical-align: middle;
 	flow-children: down;
-	border: 1px solid #ffffff2a;
+	/* GAMEPOINT: Граница/Обычная (Нейтральный/700) */
+	border: 1px solid #303641;
 	border-radius: 4px;
 	box-shadow: #000000b0 0px 24px 64px 0px;
 	overflow: clip clip;
@@ -59,6 +60,11 @@
 .pw-root.acc-29 { background-color: gradient(linear, 0% 0%, 100% 100%, from(#282630f4), to(#454052f4)); }
 .pw-root.acc-30 { background-color: gradient(linear, 0% 0%, 100% 100%, from(#302823f4), to(#52443af4)); }
 .pw-root.acc-31 { background-color: gradient(linear, 0% 0%, 100% 100%, from(#30231bf4), to(#523a2cf4)); }
+.pw-root.acc-32 { background-color: gradient(linear, 0% 0%, 100% 100%, from(#12151cf4), to(#0d2232f4)); }
+.pw-root.acc-33 { background-color: gradient(linear, 0% 0%, 100% 100%, from(#12151cf4), to(#2e200df4)); }
+.pw-root.acc-34 { background-color: gradient(linear, 0% 0%, 100% 100%, from(#12151cf4), to(#2e0d1ff4)); }
+.pw-root.acc-35 { background-color: gradient(linear, 0% 0%, 100% 100%, from(#12151cf4), to(#1a0d2ef4)); }
+.pw-root.acc-36 { background-color: gradient(linear, 0% 0%, 100% 100%, from(#12151cf4), to(#0d2b2ef4)); }
 .pw-root.gw-0-1 { box-shadow: #ffffffbb 0px 0px 16px 2px; }
 .pw-root.gw-0-2 { box-shadow: #ffffffdd 0px 0px 32px 6px; }
 .pw-root.gw-0-3 { box-shadow: #ffffffff 0px 0px 56px 12px; }
@@ -155,6 +161,21 @@
 .pw-root.gw-31-1 { box-shadow: #8d5a3bbb 0px 0px 16px 2px; }
 .pw-root.gw-31-2 { box-shadow: #8d5a3bdd 0px 0px 32px 6px; }
 .pw-root.gw-31-3 { box-shadow: #8d5a3bff 0px 0px 56px 12px; }
+.pw-root.gw-32-1 { box-shadow: #009bedbb 0px 0px 16px 2px; }
+.pw-root.gw-32-2 { box-shadow: #009beddd 0px 0px 32px 6px; }
+.pw-root.gw-32-3 { box-shadow: #009bedff 0px 0px 56px 12px; }
+.pw-root.gw-33-1 { box-shadow: #f59e0bbb 0px 0px 16px 2px; }
+.pw-root.gw-33-2 { box-shadow: #f59e0bdd 0px 0px 32px 6px; }
+.pw-root.gw-33-3 { box-shadow: #f59e0bff 0px 0px 56px 12px; }
+.pw-root.gw-34-1 { box-shadow: #f3009abb 0px 0px 16px 2px; }
+.pw-root.gw-34-2 { box-shadow: #f3009add 0px 0px 32px 6px; }
+.pw-root.gw-34-3 { box-shadow: #f3009aff 0px 0px 56px 12px; }
+.pw-root.gw-35-1 { box-shadow: #8b5cf6bb 0px 0px 16px 2px; }
+.pw-root.gw-35-2 { box-shadow: #8b5cf6dd 0px 0px 32px 6px; }
+.pw-root.gw-35-3 { box-shadow: #8b5cf6ff 0px 0px 56px 12px; }
+.pw-root.gw-36-1 { box-shadow: #00e5edbb 0px 0px 16px 2px; }
+.pw-root.gw-36-2 { box-shadow: #00e5eddd 0px 0px 32px 6px; }
+.pw-root.gw-36-3 { box-shadow: #00e5edff 0px 0px 56px 12px; }
 
 .pw-root.uis-90 { ui-scale: 90%; }
 .pw-root.uis-80 { ui-scale: 80%; }
@@ -194,13 +215,13 @@
 
 Label
 {
-	color: #e8eef5;
+	color: #f6f7f9;
 	font-size: 18px;
 }
 
 .pw-mut
 {
-	color: #93a4b6;
+	color: #aeb4bf;
 	font-size: 15px;
 	vertical-align: middle;
 	margin-left: 10px;
@@ -271,6 +292,8 @@ Label
 .acc-0 .pw-tile.on, .acc-0 .pw-stk.cur, .acc-0 .pw-rslot.sel, .acc-0 .pw-wzb.on, .acc-0 .pw-ova.sel, .acc-0 .pw-kova.sel
 { border: 2px solid #ffffff; }
 .acc-0 .pw-tab.on { background-color: #ffffff30; border-bottom: 3px solid #ffffff; }
+.acc-0 .pw-sw.on { border: 1px solid #ffffff; }
+.acc-0 .pw-sw.on .pw-sw-k { background-color: #ffffff; }
 .acc-1 .pw-acc, .acc-1 .pw-badge, .acc-1 .pw-nv.on .pw-nv-mark, .acc-1 .pw-chip.on, .acc-1 .pw-sd.on, .acc-1 .pw-rf.on,
 .acc-1 .pw-mb.on, .acc-1 .pw-tab.on, .acc-1 .pw-btnA, .acc-1 .pw-sbpos, .acc-1 .pw-kbadge, .acc-1 .pw-pg.on, .acc-1 .pw-kbox, .acc-1.kb-shift .pw-kshift
 { background-color: #c8d0da; }
@@ -280,6 +303,8 @@ Label
 .acc-1 .pw-tile.on, .acc-1 .pw-stk.cur, .acc-1 .pw-rslot.sel, .acc-1 .pw-wzb.on, .acc-1 .pw-ova.sel, .acc-1 .pw-kova.sel
 { border: 2px solid #c8d0da; }
 .acc-1 .pw-tab.on { background-color: #c8d0da30; border-bottom: 3px solid #c8d0da; }
+.acc-1 .pw-sw.on { border: 1px solid #c8d0da; }
+.acc-1 .pw-sw.on .pw-sw-k { background-color: #c8d0da; }
 .acc-2 .pw-acc, .acc-2 .pw-badge, .acc-2 .pw-nv.on .pw-nv-mark, .acc-2 .pw-chip.on, .acc-2 .pw-sd.on, .acc-2 .pw-rf.on,
 .acc-2 .pw-mb.on, .acc-2 .pw-tab.on, .acc-2 .pw-btnA, .acc-2 .pw-sbpos, .acc-2 .pw-kbadge, .acc-2 .pw-pg.on, .acc-2 .pw-kbox, .acc-2.kb-shift .pw-kshift
 { background-color: #8a96a3; }
@@ -289,6 +314,8 @@ Label
 .acc-2 .pw-tile.on, .acc-2 .pw-stk.cur, .acc-2 .pw-rslot.sel, .acc-2 .pw-wzb.on, .acc-2 .pw-ova.sel, .acc-2 .pw-kova.sel
 { border: 2px solid #8a96a3; }
 .acc-2 .pw-tab.on { background-color: #8a96a330; border-bottom: 3px solid #8a96a3; }
+.acc-2 .pw-sw.on { border: 1px solid #8a96a3; }
+.acc-2 .pw-sw.on .pw-sw-k { background-color: #8a96a3; }
 .acc-3 .pw-acc, .acc-3 .pw-badge, .acc-3 .pw-nv.on .pw-nv-mark, .acc-3 .pw-chip.on, .acc-3 .pw-sd.on, .acc-3 .pw-rf.on,
 .acc-3 .pw-mb.on, .acc-3 .pw-tab.on, .acc-3 .pw-btnA, .acc-3 .pw-sbpos, .acc-3 .pw-kbadge, .acc-3 .pw-pg.on, .acc-3 .pw-kbox, .acc-3.kb-shift .pw-kshift
 { background-color: #d6ecff; }
@@ -298,6 +325,8 @@ Label
 .acc-3 .pw-tile.on, .acc-3 .pw-stk.cur, .acc-3 .pw-rslot.sel, .acc-3 .pw-wzb.on, .acc-3 .pw-ova.sel, .acc-3 .pw-kova.sel
 { border: 2px solid #d6ecff; }
 .acc-3 .pw-tab.on { background-color: #d6ecff30; border-bottom: 3px solid #d6ecff; }
+.acc-3 .pw-sw.on { border: 1px solid #d6ecff; }
+.acc-3 .pw-sw.on .pw-sw-k { background-color: #d6ecff; }
 .acc-4 .pw-acc, .acc-4 .pw-badge, .acc-4 .pw-nv.on .pw-nv-mark, .acc-4 .pw-chip.on, .acc-4 .pw-sd.on, .acc-4 .pw-rf.on,
 .acc-4 .pw-mb.on, .acc-4 .pw-tab.on, .acc-4 .pw-btnA, .acc-4 .pw-sbpos, .acc-4 .pw-kbadge, .acc-4 .pw-pg.on, .acc-4 .pw-kbox, .acc-4.kb-shift .pw-kshift
 { background-color: #a9d0ff; }
@@ -307,6 +336,8 @@ Label
 .acc-4 .pw-tile.on, .acc-4 .pw-stk.cur, .acc-4 .pw-rslot.sel, .acc-4 .pw-wzb.on, .acc-4 .pw-ova.sel, .acc-4 .pw-kova.sel
 { border: 2px solid #a9d0ff; }
 .acc-4 .pw-tab.on { background-color: #a9d0ff30; border-bottom: 3px solid #a9d0ff; }
+.acc-4 .pw-sw.on { border: 1px solid #a9d0ff; }
+.acc-4 .pw-sw.on .pw-sw-k { background-color: #a9d0ff; }
 .acc-5 .pw-acc, .acc-5 .pw-badge, .acc-5 .pw-nv.on .pw-nv-mark, .acc-5 .pw-chip.on, .acc-5 .pw-sd.on, .acc-5 .pw-rf.on,
 .acc-5 .pw-mb.on, .acc-5 .pw-tab.on, .acc-5 .pw-btnA, .acc-5 .pw-sbpos, .acc-5 .pw-kbadge, .acc-5 .pw-pg.on, .acc-5 .pw-kbox, .acc-5.kb-shift .pw-kshift
 { background-color: #7cc4ff; }
@@ -316,6 +347,8 @@ Label
 .acc-5 .pw-tile.on, .acc-5 .pw-stk.cur, .acc-5 .pw-rslot.sel, .acc-5 .pw-wzb.on, .acc-5 .pw-ova.sel, .acc-5 .pw-kova.sel
 { border: 2px solid #7cc4ff; }
 .acc-5 .pw-tab.on { background-color: #7cc4ff30; border-bottom: 3px solid #7cc4ff; }
+.acc-5 .pw-sw.on { border: 1px solid #7cc4ff; }
+.acc-5 .pw-sw.on .pw-sw-k { background-color: #7cc4ff; }
 .acc-6 .pw-acc, .acc-6 .pw-badge, .acc-6 .pw-nv.on .pw-nv-mark, .acc-6 .pw-chip.on, .acc-6 .pw-sd.on, .acc-6 .pw-rf.on,
 .acc-6 .pw-mb.on, .acc-6 .pw-tab.on, .acc-6 .pw-btnA, .acc-6 .pw-sbpos, .acc-6 .pw-kbadge, .acc-6 .pw-pg.on, .acc-6 .pw-kbox, .acc-6.kb-shift .pw-kshift
 { background-color: #4aa8ff; }
@@ -325,6 +358,8 @@ Label
 .acc-6 .pw-tile.on, .acc-6 .pw-stk.cur, .acc-6 .pw-rslot.sel, .acc-6 .pw-wzb.on, .acc-6 .pw-ova.sel, .acc-6 .pw-kova.sel
 { border: 2px solid #4aa8ff; }
 .acc-6 .pw-tab.on { background-color: #4aa8ff30; border-bottom: 3px solid #4aa8ff; }
+.acc-6 .pw-sw.on { border: 1px solid #4aa8ff; }
+.acc-6 .pw-sw.on .pw-sw-k { background-color: #4aa8ff; }
 .acc-7 .pw-acc, .acc-7 .pw-badge, .acc-7 .pw-nv.on .pw-nv-mark, .acc-7 .pw-chip.on, .acc-7 .pw-sd.on, .acc-7 .pw-rf.on,
 .acc-7 .pw-mb.on, .acc-7 .pw-tab.on, .acc-7 .pw-btnA, .acc-7 .pw-sbpos, .acc-7 .pw-kbadge, .acc-7 .pw-pg.on, .acc-7 .pw-kbox, .acc-7.kb-shift .pw-kshift
 { background-color: #2f6bff; }
@@ -334,6 +369,8 @@ Label
 .acc-7 .pw-tile.on, .acc-7 .pw-stk.cur, .acc-7 .pw-rslot.sel, .acc-7 .pw-wzb.on, .acc-7 .pw-ova.sel, .acc-7 .pw-kova.sel
 { border: 2px solid #2f6bff; }
 .acc-7 .pw-tab.on { background-color: #2f6bff30; border-bottom: 3px solid #2f6bff; }
+.acc-7 .pw-sw.on { border: 1px solid #2f6bff; }
+.acc-7 .pw-sw.on .pw-sw-k { background-color: #2f6bff; }
 .acc-8 .pw-acc, .acc-8 .pw-badge, .acc-8 .pw-nv.on .pw-nv-mark, .acc-8 .pw-chip.on, .acc-8 .pw-sd.on, .acc-8 .pw-rf.on,
 .acc-8 .pw-mb.on, .acc-8 .pw-tab.on, .acc-8 .pw-btnA, .acc-8 .pw-sbpos, .acc-8 .pw-kbadge, .acc-8 .pw-pg.on, .acc-8 .pw-kbox, .acc-8.kb-shift .pw-kshift
 { background-color: #2340b8; }
@@ -343,6 +380,8 @@ Label
 .acc-8 .pw-tile.on, .acc-8 .pw-stk.cur, .acc-8 .pw-rslot.sel, .acc-8 .pw-wzb.on, .acc-8 .pw-ova.sel, .acc-8 .pw-kova.sel
 { border: 2px solid #2340b8; }
 .acc-8 .pw-tab.on { background-color: #2340b830; border-bottom: 3px solid #2340b8; }
+.acc-8 .pw-sw.on { border: 1px solid #2340b8; }
+.acc-8 .pw-sw.on .pw-sw-k { background-color: #2340b8; }
 .acc-9 .pw-acc, .acc-9 .pw-badge, .acc-9 .pw-nv.on .pw-nv-mark, .acc-9 .pw-chip.on, .acc-9 .pw-sd.on, .acc-9 .pw-rf.on,
 .acc-9 .pw-mb.on, .acc-9 .pw-tab.on, .acc-9 .pw-btnA, .acc-9 .pw-sbpos, .acc-9 .pw-kbadge, .acc-9 .pw-pg.on, .acc-9 .pw-kbox, .acc-9.kb-shift .pw-kshift
 { background-color: #3fe0ff; }
@@ -352,6 +391,8 @@ Label
 .acc-9 .pw-tile.on, .acc-9 .pw-stk.cur, .acc-9 .pw-rslot.sel, .acc-9 .pw-wzb.on, .acc-9 .pw-ova.sel, .acc-9 .pw-kova.sel
 { border: 2px solid #3fe0ff; }
 .acc-9 .pw-tab.on { background-color: #3fe0ff30; border-bottom: 3px solid #3fe0ff; }
+.acc-9 .pw-sw.on { border: 1px solid #3fe0ff; }
+.acc-9 .pw-sw.on .pw-sw-k { background-color: #3fe0ff; }
 .acc-10 .pw-acc, .acc-10 .pw-badge, .acc-10 .pw-nv.on .pw-nv-mark, .acc-10 .pw-chip.on, .acc-10 .pw-sd.on, .acc-10 .pw-rf.on,
 .acc-10 .pw-mb.on, .acc-10 .pw-tab.on, .acc-10 .pw-btnA, .acc-10 .pw-sbpos, .acc-10 .pw-kbadge, .acc-10 .pw-pg.on, .acc-10 .pw-kbox, .acc-10.kb-shift .pw-kshift
 { background-color: #20c9b0; }
@@ -361,6 +402,8 @@ Label
 .acc-10 .pw-tile.on, .acc-10 .pw-stk.cur, .acc-10 .pw-rslot.sel, .acc-10 .pw-wzb.on, .acc-10 .pw-ova.sel, .acc-10 .pw-kova.sel
 { border: 2px solid #20c9b0; }
 .acc-10 .pw-tab.on { background-color: #20c9b030; border-bottom: 3px solid #20c9b0; }
+.acc-10 .pw-sw.on { border: 1px solid #20c9b0; }
+.acc-10 .pw-sw.on .pw-sw-k { background-color: #20c9b0; }
 .acc-11 .pw-acc, .acc-11 .pw-badge, .acc-11 .pw-nv.on .pw-nv-mark, .acc-11 .pw-chip.on, .acc-11 .pw-sd.on, .acc-11 .pw-rf.on,
 .acc-11 .pw-mb.on, .acc-11 .pw-tab.on, .acc-11 .pw-btnA, .acc-11 .pw-sbpos, .acc-11 .pw-kbadge, .acc-11 .pw-pg.on, .acc-11 .pw-kbox, .acc-11.kb-shift .pw-kshift
 { background-color: #5ff2d6; }
@@ -370,6 +413,8 @@ Label
 .acc-11 .pw-tile.on, .acc-11 .pw-stk.cur, .acc-11 .pw-rslot.sel, .acc-11 .pw-wzb.on, .acc-11 .pw-ova.sel, .acc-11 .pw-kova.sel
 { border: 2px solid #5ff2d6; }
 .acc-11 .pw-tab.on { background-color: #5ff2d630; border-bottom: 3px solid #5ff2d6; }
+.acc-11 .pw-sw.on { border: 1px solid #5ff2d6; }
+.acc-11 .pw-sw.on .pw-sw-k { background-color: #5ff2d6; }
 .acc-12 .pw-acc, .acc-12 .pw-badge, .acc-12 .pw-nv.on .pw-nv-mark, .acc-12 .pw-chip.on, .acc-12 .pw-sd.on, .acc-12 .pw-rf.on,
 .acc-12 .pw-mb.on, .acc-12 .pw-tab.on, .acc-12 .pw-btnA, .acc-12 .pw-sbpos, .acc-12 .pw-kbadge, .acc-12 .pw-pg.on, .acc-12 .pw-kbox, .acc-12.kb-shift .pw-kshift
 { background-color: #8cf5b0; }
@@ -379,6 +424,8 @@ Label
 .acc-12 .pw-tile.on, .acc-12 .pw-stk.cur, .acc-12 .pw-rslot.sel, .acc-12 .pw-wzb.on, .acc-12 .pw-ova.sel, .acc-12 .pw-kova.sel
 { border: 2px solid #8cf5b0; }
 .acc-12 .pw-tab.on { background-color: #8cf5b030; border-bottom: 3px solid #8cf5b0; }
+.acc-12 .pw-sw.on { border: 1px solid #8cf5b0; }
+.acc-12 .pw-sw.on .pw-sw-k { background-color: #8cf5b0; }
 .acc-13 .pw-acc, .acc-13 .pw-badge, .acc-13 .pw-nv.on .pw-nv-mark, .acc-13 .pw-chip.on, .acc-13 .pw-sd.on, .acc-13 .pw-rf.on,
 .acc-13 .pw-mb.on, .acc-13 .pw-tab.on, .acc-13 .pw-btnA, .acc-13 .pw-sbpos, .acc-13 .pw-kbadge, .acc-13 .pw-pg.on, .acc-13 .pw-kbox, .acc-13.kb-shift .pw-kshift
 { background-color: #3ddc6e; }
@@ -388,6 +435,8 @@ Label
 .acc-13 .pw-tile.on, .acc-13 .pw-stk.cur, .acc-13 .pw-rslot.sel, .acc-13 .pw-wzb.on, .acc-13 .pw-ova.sel, .acc-13 .pw-kova.sel
 { border: 2px solid #3ddc6e; }
 .acc-13 .pw-tab.on { background-color: #3ddc6e30; border-bottom: 3px solid #3ddc6e; }
+.acc-13 .pw-sw.on { border: 1px solid #3ddc6e; }
+.acc-13 .pw-sw.on .pw-sw-k { background-color: #3ddc6e; }
 .acc-14 .pw-acc, .acc-14 .pw-badge, .acc-14 .pw-nv.on .pw-nv-mark, .acc-14 .pw-chip.on, .acc-14 .pw-sd.on, .acc-14 .pw-rf.on,
 .acc-14 .pw-mb.on, .acc-14 .pw-tab.on, .acc-14 .pw-btnA, .acc-14 .pw-sbpos, .acc-14 .pw-kbadge, .acc-14 .pw-pg.on, .acc-14 .pw-kbox, .acc-14.kb-shift .pw-kshift
 { background-color: #b6f03c; }
@@ -397,6 +446,8 @@ Label
 .acc-14 .pw-tile.on, .acc-14 .pw-stk.cur, .acc-14 .pw-rslot.sel, .acc-14 .pw-wzb.on, .acc-14 .pw-ova.sel, .acc-14 .pw-kova.sel
 { border: 2px solid #b6f03c; }
 .acc-14 .pw-tab.on { background-color: #b6f03c30; border-bottom: 3px solid #b6f03c; }
+.acc-14 .pw-sw.on { border: 1px solid #b6f03c; }
+.acc-14 .pw-sw.on .pw-sw-k { background-color: #b6f03c; }
 .acc-15 .pw-acc, .acc-15 .pw-badge, .acc-15 .pw-nv.on .pw-nv-mark, .acc-15 .pw-chip.on, .acc-15 .pw-sd.on, .acc-15 .pw-rf.on,
 .acc-15 .pw-mb.on, .acc-15 .pw-tab.on, .acc-15 .pw-btnA, .acc-15 .pw-sbpos, .acc-15 .pw-kbadge, .acc-15 .pw-pg.on, .acc-15 .pw-kbox, .acc-15.kb-shift .pw-kshift
 { background-color: #9aa83a; }
@@ -406,6 +457,8 @@ Label
 .acc-15 .pw-tile.on, .acc-15 .pw-stk.cur, .acc-15 .pw-rslot.sel, .acc-15 .pw-wzb.on, .acc-15 .pw-ova.sel, .acc-15 .pw-kova.sel
 { border: 2px solid #9aa83a; }
 .acc-15 .pw-tab.on { background-color: #9aa83a30; border-bottom: 3px solid #9aa83a; }
+.acc-15 .pw-sw.on { border: 1px solid #9aa83a; }
+.acc-15 .pw-sw.on .pw-sw-k { background-color: #9aa83a; }
 .acc-16 .pw-acc, .acc-16 .pw-badge, .acc-16 .pw-nv.on .pw-nv-mark, .acc-16 .pw-chip.on, .acc-16 .pw-sd.on, .acc-16 .pw-rf.on,
 .acc-16 .pw-mb.on, .acc-16 .pw-tab.on, .acc-16 .pw-btnA, .acc-16 .pw-sbpos, .acc-16 .pw-kbadge, .acc-16 .pw-pg.on, .acc-16 .pw-kbox, .acc-16.kb-shift .pw-kshift
 { background-color: #fff06a; }
@@ -415,6 +468,8 @@ Label
 .acc-16 .pw-tile.on, .acc-16 .pw-stk.cur, .acc-16 .pw-rslot.sel, .acc-16 .pw-wzb.on, .acc-16 .pw-ova.sel, .acc-16 .pw-kova.sel
 { border: 2px solid #fff06a; }
 .acc-16 .pw-tab.on { background-color: #fff06a30; border-bottom: 3px solid #fff06a; }
+.acc-16 .pw-sw.on { border: 1px solid #fff06a; }
+.acc-16 .pw-sw.on .pw-sw-k { background-color: #fff06a; }
 .acc-17 .pw-acc, .acc-17 .pw-badge, .acc-17 .pw-nv.on .pw-nv-mark, .acc-17 .pw-chip.on, .acc-17 .pw-sd.on, .acc-17 .pw-rf.on,
 .acc-17 .pw-mb.on, .acc-17 .pw-tab.on, .acc-17 .pw-btnA, .acc-17 .pw-sbpos, .acc-17 .pw-kbadge, .acc-17 .pw-pg.on, .acc-17 .pw-kbox, .acc-17.kb-shift .pw-kshift
 { background-color: #ecc75c; }
@@ -424,6 +479,8 @@ Label
 .acc-17 .pw-tile.on, .acc-17 .pw-stk.cur, .acc-17 .pw-rslot.sel, .acc-17 .pw-wzb.on, .acc-17 .pw-ova.sel, .acc-17 .pw-kova.sel
 { border: 2px solid #ecc75c; }
 .acc-17 .pw-tab.on { background-color: #ecc75c30; border-bottom: 3px solid #ecc75c; }
+.acc-17 .pw-sw.on { border: 1px solid #ecc75c; }
+.acc-17 .pw-sw.on .pw-sw-k { background-color: #ecc75c; }
 .acc-18 .pw-acc, .acc-18 .pw-badge, .acc-18 .pw-nv.on .pw-nv-mark, .acc-18 .pw-chip.on, .acc-18 .pw-sd.on, .acc-18 .pw-rf.on,
 .acc-18 .pw-mb.on, .acc-18 .pw-tab.on, .acc-18 .pw-btnA, .acc-18 .pw-sbpos, .acc-18 .pw-kbadge, .acc-18 .pw-pg.on, .acc-18 .pw-kbox, .acc-18.kb-shift .pw-kshift
 { background-color: #ffb02e; }
@@ -433,6 +490,8 @@ Label
 .acc-18 .pw-tile.on, .acc-18 .pw-stk.cur, .acc-18 .pw-rslot.sel, .acc-18 .pw-wzb.on, .acc-18 .pw-ova.sel, .acc-18 .pw-kova.sel
 { border: 2px solid #ffb02e; }
 .acc-18 .pw-tab.on { background-color: #ffb02e30; border-bottom: 3px solid #ffb02e; }
+.acc-18 .pw-sw.on { border: 1px solid #ffb02e; }
+.acc-18 .pw-sw.on .pw-sw-k { background-color: #ffb02e; }
 .acc-19 .pw-acc, .acc-19 .pw-badge, .acc-19 .pw-nv.on .pw-nv-mark, .acc-19 .pw-chip.on, .acc-19 .pw-sd.on, .acc-19 .pw-rf.on,
 .acc-19 .pw-mb.on, .acc-19 .pw-tab.on, .acc-19 .pw-btnA, .acc-19 .pw-sbpos, .acc-19 .pw-kbadge, .acc-19 .pw-pg.on, .acc-19 .pw-kbox, .acc-19.kb-shift .pw-kshift
 { background-color: #ff8a2b; }
@@ -442,6 +501,8 @@ Label
 .acc-19 .pw-tile.on, .acc-19 .pw-stk.cur, .acc-19 .pw-rslot.sel, .acc-19 .pw-wzb.on, .acc-19 .pw-ova.sel, .acc-19 .pw-kova.sel
 { border: 2px solid #ff8a2b; }
 .acc-19 .pw-tab.on { background-color: #ff8a2b30; border-bottom: 3px solid #ff8a2b; }
+.acc-19 .pw-sw.on { border: 1px solid #ff8a2b; }
+.acc-19 .pw-sw.on .pw-sw-k { background-color: #ff8a2b; }
 .acc-20 .pw-acc, .acc-20 .pw-badge, .acc-20 .pw-nv.on .pw-nv-mark, .acc-20 .pw-chip.on, .acc-20 .pw-sd.on, .acc-20 .pw-rf.on,
 .acc-20 .pw-mb.on, .acc-20 .pw-tab.on, .acc-20 .pw-btnA, .acc-20 .pw-sbpos, .acc-20 .pw-kbadge, .acc-20 .pw-pg.on, .acc-20 .pw-kbox, .acc-20.kb-shift .pw-kshift
 { background-color: #d9773a; }
@@ -451,6 +512,8 @@ Label
 .acc-20 .pw-tile.on, .acc-20 .pw-stk.cur, .acc-20 .pw-rslot.sel, .acc-20 .pw-wzb.on, .acc-20 .pw-ova.sel, .acc-20 .pw-kova.sel
 { border: 2px solid #d9773a; }
 .acc-20 .pw-tab.on { background-color: #d9773a30; border-bottom: 3px solid #d9773a; }
+.acc-20 .pw-sw.on { border: 1px solid #d9773a; }
+.acc-20 .pw-sw.on .pw-sw-k { background-color: #d9773a; }
 .acc-21 .pw-acc, .acc-21 .pw-badge, .acc-21 .pw-nv.on .pw-nv-mark, .acc-21 .pw-chip.on, .acc-21 .pw-sd.on, .acc-21 .pw-rf.on,
 .acc-21 .pw-mb.on, .acc-21 .pw-tab.on, .acc-21 .pw-btnA, .acc-21 .pw-sbpos, .acc-21 .pw-kbadge, .acc-21 .pw-pg.on, .acc-21 .pw-kbox, .acc-21.kb-shift .pw-kshift
 { background-color: #ff7a6b; }
@@ -460,6 +523,8 @@ Label
 .acc-21 .pw-tile.on, .acc-21 .pw-stk.cur, .acc-21 .pw-rslot.sel, .acc-21 .pw-wzb.on, .acc-21 .pw-ova.sel, .acc-21 .pw-kova.sel
 { border: 2px solid #ff7a6b; }
 .acc-21 .pw-tab.on { background-color: #ff7a6b30; border-bottom: 3px solid #ff7a6b; }
+.acc-21 .pw-sw.on { border: 1px solid #ff7a6b; }
+.acc-21 .pw-sw.on .pw-sw-k { background-color: #ff7a6b; }
 .acc-22 .pw-acc, .acc-22 .pw-badge, .acc-22 .pw-nv.on .pw-nv-mark, .acc-22 .pw-chip.on, .acc-22 .pw-sd.on, .acc-22 .pw-rf.on,
 .acc-22 .pw-mb.on, .acc-22 .pw-tab.on, .acc-22 .pw-btnA, .acc-22 .pw-sbpos, .acc-22 .pw-kbadge, .acc-22 .pw-pg.on, .acc-22 .pw-kbox, .acc-22.kb-shift .pw-kshift
 { background-color: #ff3b3b; }
@@ -469,6 +534,8 @@ Label
 .acc-22 .pw-tile.on, .acc-22 .pw-stk.cur, .acc-22 .pw-rslot.sel, .acc-22 .pw-wzb.on, .acc-22 .pw-ova.sel, .acc-22 .pw-kova.sel
 { border: 2px solid #ff3b3b; }
 .acc-22 .pw-tab.on { background-color: #ff3b3b30; border-bottom: 3px solid #ff3b3b; }
+.acc-22 .pw-sw.on { border: 1px solid #ff3b3b; }
+.acc-22 .pw-sw.on .pw-sw-k { background-color: #ff3b3b; }
 .acc-23 .pw-acc, .acc-23 .pw-badge, .acc-23 .pw-nv.on .pw-nv-mark, .acc-23 .pw-chip.on, .acc-23 .pw-sd.on, .acc-23 .pw-rf.on,
 .acc-23 .pw-mb.on, .acc-23 .pw-tab.on, .acc-23 .pw-btnA, .acc-23 .pw-sbpos, .acc-23 .pw-kbadge, .acc-23 .pw-pg.on, .acc-23 .pw-kbox, .acc-23.kb-shift .pw-kshift
 { background-color: #c8102e; }
@@ -478,6 +545,8 @@ Label
 .acc-23 .pw-tile.on, .acc-23 .pw-stk.cur, .acc-23 .pw-rslot.sel, .acc-23 .pw-wzb.on, .acc-23 .pw-ova.sel, .acc-23 .pw-kova.sel
 { border: 2px solid #c8102e; }
 .acc-23 .pw-tab.on { background-color: #c8102e30; border-bottom: 3px solid #c8102e; }
+.acc-23 .pw-sw.on { border: 1px solid #c8102e; }
+.acc-23 .pw-sw.on .pw-sw-k { background-color: #c8102e; }
 .acc-24 .pw-acc, .acc-24 .pw-badge, .acc-24 .pw-nv.on .pw-nv-mark, .acc-24 .pw-chip.on, .acc-24 .pw-sd.on, .acc-24 .pw-rf.on,
 .acc-24 .pw-mb.on, .acc-24 .pw-tab.on, .acc-24 .pw-btnA, .acc-24 .pw-sbpos, .acc-24 .pw-kbadge, .acc-24 .pw-pg.on, .acc-24 .pw-kbox, .acc-24.kb-shift .pw-kshift
 { background-color: #ff7ac8; }
@@ -487,6 +556,8 @@ Label
 .acc-24 .pw-tile.on, .acc-24 .pw-stk.cur, .acc-24 .pw-rslot.sel, .acc-24 .pw-wzb.on, .acc-24 .pw-ova.sel, .acc-24 .pw-kova.sel
 { border: 2px solid #ff7ac8; }
 .acc-24 .pw-tab.on { background-color: #ff7ac830; border-bottom: 3px solid #ff7ac8; }
+.acc-24 .pw-sw.on { border: 1px solid #ff7ac8; }
+.acc-24 .pw-sw.on .pw-sw-k { background-color: #ff7ac8; }
 .acc-25 .pw-acc, .acc-25 .pw-badge, .acc-25 .pw-nv.on .pw-nv-mark, .acc-25 .pw-chip.on, .acc-25 .pw-sd.on, .acc-25 .pw-rf.on,
 .acc-25 .pw-mb.on, .acc-25 .pw-tab.on, .acc-25 .pw-btnA, .acc-25 .pw-sbpos, .acc-25 .pw-kbadge, .acc-25 .pw-pg.on, .acc-25 .pw-kbox, .acc-25.kb-shift .pw-kshift
 { background-color: #ff3fa4; }
@@ -496,6 +567,8 @@ Label
 .acc-25 .pw-tile.on, .acc-25 .pw-stk.cur, .acc-25 .pw-rslot.sel, .acc-25 .pw-wzb.on, .acc-25 .pw-ova.sel, .acc-25 .pw-kova.sel
 { border: 2px solid #ff3fa4; }
 .acc-25 .pw-tab.on { background-color: #ff3fa430; border-bottom: 3px solid #ff3fa4; }
+.acc-25 .pw-sw.on { border: 1px solid #ff3fa4; }
+.acc-25 .pw-sw.on .pw-sw-k { background-color: #ff3fa4; }
 .acc-26 .pw-acc, .acc-26 .pw-badge, .acc-26 .pw-nv.on .pw-nv-mark, .acc-26 .pw-chip.on, .acc-26 .pw-sd.on, .acc-26 .pw-rf.on,
 .acc-26 .pw-mb.on, .acc-26 .pw-tab.on, .acc-26 .pw-btnA, .acc-26 .pw-sbpos, .acc-26 .pw-kbadge, .acc-26 .pw-pg.on, .acc-26 .pw-kbox, .acc-26.kb-shift .pw-kshift
 { background-color: #e040fb; }
@@ -505,6 +578,8 @@ Label
 .acc-26 .pw-tile.on, .acc-26 .pw-stk.cur, .acc-26 .pw-rslot.sel, .acc-26 .pw-wzb.on, .acc-26 .pw-ova.sel, .acc-26 .pw-kova.sel
 { border: 2px solid #e040fb; }
 .acc-26 .pw-tab.on { background-color: #e040fb30; border-bottom: 3px solid #e040fb; }
+.acc-26 .pw-sw.on { border: 1px solid #e040fb; }
+.acc-26 .pw-sw.on .pw-sw-k { background-color: #e040fb; }
 .acc-27 .pw-acc, .acc-27 .pw-badge, .acc-27 .pw-nv.on .pw-nv-mark, .acc-27 .pw-chip.on, .acc-27 .pw-sd.on, .acc-27 .pw-rf.on,
 .acc-27 .pw-mb.on, .acc-27 .pw-tab.on, .acc-27 .pw-btnA, .acc-27 .pw-sbpos, .acc-27 .pw-kbadge, .acc-27 .pw-pg.on, .acc-27 .pw-kbox, .acc-27.kb-shift .pw-kshift
 { background-color: #b07cff; }
@@ -514,6 +589,8 @@ Label
 .acc-27 .pw-tile.on, .acc-27 .pw-stk.cur, .acc-27 .pw-rslot.sel, .acc-27 .pw-wzb.on, .acc-27 .pw-ova.sel, .acc-27 .pw-kova.sel
 { border: 2px solid #b07cff; }
 .acc-27 .pw-tab.on { background-color: #b07cff30; border-bottom: 3px solid #b07cff; }
+.acc-27 .pw-sw.on { border: 1px solid #b07cff; }
+.acc-27 .pw-sw.on .pw-sw-k { background-color: #b07cff; }
 .acc-28 .pw-acc, .acc-28 .pw-badge, .acc-28 .pw-nv.on .pw-nv-mark, .acc-28 .pw-chip.on, .acc-28 .pw-sd.on, .acc-28 .pw-rf.on,
 .acc-28 .pw-mb.on, .acc-28 .pw-tab.on, .acc-28 .pw-btnA, .acc-28 .pw-sbpos, .acc-28 .pw-kbadge, .acc-28 .pw-pg.on, .acc-28 .pw-kbox, .acc-28.kb-shift .pw-kshift
 { background-color: #8a4dff; }
@@ -523,6 +600,8 @@ Label
 .acc-28 .pw-tile.on, .acc-28 .pw-stk.cur, .acc-28 .pw-rslot.sel, .acc-28 .pw-wzb.on, .acc-28 .pw-ova.sel, .acc-28 .pw-kova.sel
 { border: 2px solid #8a4dff; }
 .acc-28 .pw-tab.on { background-color: #8a4dff30; border-bottom: 3px solid #8a4dff; }
+.acc-28 .pw-sw.on { border: 1px solid #8a4dff; }
+.acc-28 .pw-sw.on .pw-sw-k { background-color: #8a4dff; }
 .acc-29 .pw-acc, .acc-29 .pw-badge, .acc-29 .pw-nv.on .pw-nv-mark, .acc-29 .pw-chip.on, .acc-29 .pw-sd.on, .acc-29 .pw-rf.on,
 .acc-29 .pw-mb.on, .acc-29 .pw-tab.on, .acc-29 .pw-btnA, .acc-29 .pw-sbpos, .acc-29 .pw-kbadge, .acc-29 .pw-pg.on, .acc-29 .pw-kbox, .acc-29.kb-shift .pw-kshift
 { background-color: #cbb7ff; }
@@ -532,6 +611,8 @@ Label
 .acc-29 .pw-tile.on, .acc-29 .pw-stk.cur, .acc-29 .pw-rslot.sel, .acc-29 .pw-wzb.on, .acc-29 .pw-ova.sel, .acc-29 .pw-kova.sel
 { border: 2px solid #cbb7ff; }
 .acc-29 .pw-tab.on { background-color: #cbb7ff30; border-bottom: 3px solid #cbb7ff; }
+.acc-29 .pw-sw.on { border: 1px solid #cbb7ff; }
+.acc-29 .pw-sw.on .pw-sw-k { background-color: #cbb7ff; }
 .acc-30 .pw-acc, .acc-30 .pw-badge, .acc-30 .pw-nv.on .pw-nv-mark, .acc-30 .pw-chip.on, .acc-30 .pw-sd.on, .acc-30 .pw-rf.on,
 .acc-30 .pw-mb.on, .acc-30 .pw-tab.on, .acc-30 .pw-btnA, .acc-30 .pw-sbpos, .acc-30 .pw-kbadge, .acc-30 .pw-pg.on, .acc-30 .pw-kbox, .acc-30.kb-shift .pw-kshift
 { background-color: #ffc7a3; }
@@ -541,6 +622,8 @@ Label
 .acc-30 .pw-tile.on, .acc-30 .pw-stk.cur, .acc-30 .pw-rslot.sel, .acc-30 .pw-wzb.on, .acc-30 .pw-ova.sel, .acc-30 .pw-kova.sel
 { border: 2px solid #ffc7a3; }
 .acc-30 .pw-tab.on { background-color: #ffc7a330; border-bottom: 3px solid #ffc7a3; }
+.acc-30 .pw-sw.on { border: 1px solid #ffc7a3; }
+.acc-30 .pw-sw.on .pw-sw-k { background-color: #ffc7a3; }
 .acc-31 .pw-acc, .acc-31 .pw-badge, .acc-31 .pw-nv.on .pw-nv-mark, .acc-31 .pw-chip.on, .acc-31 .pw-sd.on, .acc-31 .pw-rf.on,
 .acc-31 .pw-mb.on, .acc-31 .pw-tab.on, .acc-31 .pw-btnA, .acc-31 .pw-sbpos, .acc-31 .pw-kbadge, .acc-31 .pw-pg.on, .acc-31 .pw-kbox, .acc-31.kb-shift .pw-kshift
 { background-color: #8d5a3b; }
@@ -550,6 +633,63 @@ Label
 .acc-31 .pw-tile.on, .acc-31 .pw-stk.cur, .acc-31 .pw-rslot.sel, .acc-31 .pw-wzb.on, .acc-31 .pw-ova.sel, .acc-31 .pw-kova.sel
 { border: 2px solid #8d5a3b; }
 .acc-31 .pw-tab.on { background-color: #8d5a3b30; border-bottom: 3px solid #8d5a3b; }
+.acc-31 .pw-sw.on { border: 1px solid #8d5a3b; }
+.acc-31 .pw-sw.on .pw-sw-k { background-color: #8d5a3b; }
+.acc-32 .pw-acc, .acc-32 .pw-badge, .acc-32 .pw-nv.on .pw-nv-mark, .acc-32 .pw-chip.on, .acc-32 .pw-sd.on, .acc-32 .pw-rf.on,
+.acc-32 .pw-mb.on, .acc-32 .pw-tab.on, .acc-32 .pw-btnA, .acc-32 .pw-sbpos, .acc-32 .pw-kbadge, .acc-32 .pw-pg.on, .acc-32 .pw-kbox, .acc-32.kb-shift .pw-kshift
+{ background-color: #009bed; }
+.acc-32 .pw-badge-t, .acc-32 .pw-chip.on .pw-chip-t, .acc-32 .pw-sd.on .pw-sd-t, .acc-32 .pw-rf.on .pw-rf-t, .acc-32 .pw-mb.on .pw-mb-t,
+.acc-32 .pw-btnA-t, .acc-32 .pw-sbpos .pw-sbb-t, .acc-32 .pw-kbadge-t
+{ color: #ffffff; }
+.acc-32 .pw-tile.on, .acc-32 .pw-stk.cur, .acc-32 .pw-rslot.sel, .acc-32 .pw-wzb.on, .acc-32 .pw-ova.sel, .acc-32 .pw-kova.sel
+{ border: 2px solid #009bed; }
+.acc-32 .pw-tab.on { background-color: #009bed30; border-bottom: 3px solid #009bed; }
+.acc-32 .pw-sw.on { border: 1px solid #009bed; }
+.acc-32 .pw-sw.on .pw-sw-k { background-color: #009bed; }
+.acc-33 .pw-acc, .acc-33 .pw-badge, .acc-33 .pw-nv.on .pw-nv-mark, .acc-33 .pw-chip.on, .acc-33 .pw-sd.on, .acc-33 .pw-rf.on,
+.acc-33 .pw-mb.on, .acc-33 .pw-tab.on, .acc-33 .pw-btnA, .acc-33 .pw-sbpos, .acc-33 .pw-kbadge, .acc-33 .pw-pg.on, .acc-33 .pw-kbox, .acc-33.kb-shift .pw-kshift
+{ background-color: #f59e0b; }
+.acc-33 .pw-badge-t, .acc-33 .pw-chip.on .pw-chip-t, .acc-33 .pw-sd.on .pw-sd-t, .acc-33 .pw-rf.on .pw-rf-t, .acc-33 .pw-mb.on .pw-mb-t,
+.acc-33 .pw-btnA-t, .acc-33 .pw-sbpos .pw-sbb-t, .acc-33 .pw-kbadge-t
+{ color: #0b0d12; }
+.acc-33 .pw-tile.on, .acc-33 .pw-stk.cur, .acc-33 .pw-rslot.sel, .acc-33 .pw-wzb.on, .acc-33 .pw-ova.sel, .acc-33 .pw-kova.sel
+{ border: 2px solid #f59e0b; }
+.acc-33 .pw-tab.on { background-color: #f59e0b30; border-bottom: 3px solid #f59e0b; }
+.acc-33 .pw-sw.on { border: 1px solid #f59e0b; }
+.acc-33 .pw-sw.on .pw-sw-k { background-color: #f59e0b; }
+.acc-34 .pw-acc, .acc-34 .pw-badge, .acc-34 .pw-nv.on .pw-nv-mark, .acc-34 .pw-chip.on, .acc-34 .pw-sd.on, .acc-34 .pw-rf.on,
+.acc-34 .pw-mb.on, .acc-34 .pw-tab.on, .acc-34 .pw-btnA, .acc-34 .pw-sbpos, .acc-34 .pw-kbadge, .acc-34 .pw-pg.on, .acc-34 .pw-kbox, .acc-34.kb-shift .pw-kshift
+{ background-color: #f3009a; }
+.acc-34 .pw-badge-t, .acc-34 .pw-chip.on .pw-chip-t, .acc-34 .pw-sd.on .pw-sd-t, .acc-34 .pw-rf.on .pw-rf-t, .acc-34 .pw-mb.on .pw-mb-t,
+.acc-34 .pw-btnA-t, .acc-34 .pw-sbpos .pw-sbb-t, .acc-34 .pw-kbadge-t
+{ color: #ffffff; }
+.acc-34 .pw-tile.on, .acc-34 .pw-stk.cur, .acc-34 .pw-rslot.sel, .acc-34 .pw-wzb.on, .acc-34 .pw-ova.sel, .acc-34 .pw-kova.sel
+{ border: 2px solid #f3009a; }
+.acc-34 .pw-tab.on { background-color: #f3009a30; border-bottom: 3px solid #f3009a; }
+.acc-34 .pw-sw.on { border: 1px solid #f3009a; }
+.acc-34 .pw-sw.on .pw-sw-k { background-color: #f3009a; }
+.acc-35 .pw-acc, .acc-35 .pw-badge, .acc-35 .pw-nv.on .pw-nv-mark, .acc-35 .pw-chip.on, .acc-35 .pw-sd.on, .acc-35 .pw-rf.on,
+.acc-35 .pw-mb.on, .acc-35 .pw-tab.on, .acc-35 .pw-btnA, .acc-35 .pw-sbpos, .acc-35 .pw-kbadge, .acc-35 .pw-pg.on, .acc-35 .pw-kbox, .acc-35.kb-shift .pw-kshift
+{ background-color: #8b5cf6; }
+.acc-35 .pw-badge-t, .acc-35 .pw-chip.on .pw-chip-t, .acc-35 .pw-sd.on .pw-sd-t, .acc-35 .pw-rf.on .pw-rf-t, .acc-35 .pw-mb.on .pw-mb-t,
+.acc-35 .pw-btnA-t, .acc-35 .pw-sbpos .pw-sbb-t, .acc-35 .pw-kbadge-t
+{ color: #ffffff; }
+.acc-35 .pw-tile.on, .acc-35 .pw-stk.cur, .acc-35 .pw-rslot.sel, .acc-35 .pw-wzb.on, .acc-35 .pw-ova.sel, .acc-35 .pw-kova.sel
+{ border: 2px solid #8b5cf6; }
+.acc-35 .pw-tab.on { background-color: #8b5cf630; border-bottom: 3px solid #8b5cf6; }
+.acc-35 .pw-sw.on { border: 1px solid #8b5cf6; }
+.acc-35 .pw-sw.on .pw-sw-k { background-color: #8b5cf6; }
+.acc-36 .pw-acc, .acc-36 .pw-badge, .acc-36 .pw-nv.on .pw-nv-mark, .acc-36 .pw-chip.on, .acc-36 .pw-sd.on, .acc-36 .pw-rf.on,
+.acc-36 .pw-mb.on, .acc-36 .pw-tab.on, .acc-36 .pw-btnA, .acc-36 .pw-sbpos, .acc-36 .pw-kbadge, .acc-36 .pw-pg.on, .acc-36 .pw-kbox, .acc-36.kb-shift .pw-kshift
+{ background-color: #00e5ed; }
+.acc-36 .pw-badge-t, .acc-36 .pw-chip.on .pw-chip-t, .acc-36 .pw-sd.on .pw-sd-t, .acc-36 .pw-rf.on .pw-rf-t, .acc-36 .pw-mb.on .pw-mb-t,
+.acc-36 .pw-btnA-t, .acc-36 .pw-sbpos .pw-sbb-t, .acc-36 .pw-kbadge-t
+{ color: #0b0d12; }
+.acc-36 .pw-tile.on, .acc-36 .pw-stk.cur, .acc-36 .pw-rslot.sel, .acc-36 .pw-wzb.on, .acc-36 .pw-ova.sel, .acc-36 .pw-kova.sel
+{ border: 2px solid #00e5ed; }
+.acc-36 .pw-tab.on { background-color: #00e5ed30; border-bottom: 3px solid #00e5ed; }
+.acc-36 .pw-sw.on { border: 1px solid #00e5ed; }
+.acc-36 .pw-sw.on .pw-sw-k { background-color: #00e5ed; }
 .pw-card.eq.eqa-0 { border: 2px solid #ffffff; }
 .eqa-0 .pw-eq { background-color: #ffffff; }
 .eqa-0 .pw-eq-t { color: #1f1f1f; }
@@ -646,6 +786,21 @@ Label
 .pw-card.eq.eqa-31 { border: 2px solid #8d5a3b; }
 .eqa-31 .pw-eq { background-color: #8d5a3b; }
 .eqa-31 .pw-eq-t { color: #ffffff; }
+.pw-card.eq.eqa-32 { border: 2px solid #009bed; }
+.eqa-32 .pw-eq { background-color: #009bed; }
+.eqa-32 .pw-eq-t { color: #ffffff; }
+.pw-card.eq.eqa-33 { border: 2px solid #f59e0b; }
+.eqa-33 .pw-eq { background-color: #f59e0b; }
+.eqa-33 .pw-eq-t { color: #0b0d12; }
+.pw-card.eq.eqa-34 { border: 2px solid #f3009a; }
+.eqa-34 .pw-eq { background-color: #f3009a; }
+.eqa-34 .pw-eq-t { color: #ffffff; }
+.pw-card.eq.eqa-35 { border: 2px solid #8b5cf6; }
+.eqa-35 .pw-eq { background-color: #8b5cf6; }
+.eqa-35 .pw-eq-t { color: #ffffff; }
+.pw-card.eq.eqa-36 { border: 2px solid #00e5ed; }
+.eqa-36 .pw-eq { background-color: #00e5ed; }
+.eqa-36 .pw-eq-t { color: #0b0d12; }
 
 /* ---------- top bar ---------- */
 
@@ -717,7 +872,7 @@ Label
 
 .pw-uis-l
 {
-	color: #93a4b6;
+	color: #aeb4bf;
 	margin-right: 8px;
 }
 
@@ -751,7 +906,7 @@ Label
 .pw-ttl-s
 {
 	font-size: 19px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	vertical-align: middle;
 	margin-left: 14px;
 	margin-top: 4px;
@@ -768,7 +923,7 @@ Label
 
 .pw-close:hover
 {
-	background-color: #c0392b;
+	background-color: #ef4444;
 }
 
 .pw-close-t
@@ -849,7 +1004,7 @@ Label
 .pw-ht-l
 {
 	font-size: 15px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	font-style: italic;
 	text-transform: uppercase;
 	vertical-align: top;
@@ -917,17 +1072,21 @@ Label
 	height: 760px;
 }
 
+/* GAMEPOINT Badge: capsule, sizes S 20 / M 24 / L 28 px, text 12 / 14 / 16 px, side padding 8 / 8 / 12 px.
+   Panorama has no 999px pill, so the radius is half the height. */
 .pw-badge
 {
 	horizontal-align: center;
+	height: 28px;
 	margin-top: 16px;
-	padding: 6px 22px;
+	padding: 0px 12px;
+	border-radius: 14px;
 }
 
 .pw-badge-t
 {
-	font-size: 28px;
-	font-style: italic;
+	vertical-align: middle;
+	font-size: 16px;
 }
 
 .pw-hero-cap
@@ -948,7 +1107,7 @@ Label
 .pw-hero-f
 {
 	font-size: 16px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 .pw-hero-hint
@@ -970,7 +1129,7 @@ Label
 .pw-hint-t
 {
 	font-size: 14px;
-	color: #c9d3de;
+	color: #ced2d9;
 }
 
 /* home: categories */
@@ -1064,7 +1223,7 @@ Label
 .pw-hc-c
 {
 	font-size: 14px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	margin-bottom: 6px;
 }
 
@@ -1151,6 +1310,11 @@ Label
 .oac-29 .pw-other { background-color: gradient(linear, 0% 0%, 0% 100%, from(#454052aa), to(#282630aa)); }
 .oac-30 .pw-other { background-color: gradient(linear, 0% 0%, 0% 100%, from(#52443aaa), to(#302823aa)); }
 .oac-31 .pw-other { background-color: gradient(linear, 0% 0%, 0% 100%, from(#523a2caa), to(#30231baa)); }
+.oac-32 .pw-other { background-color: gradient(linear, 0% 0%, 0% 100%, from(#0d2232aa), to(#12151caa)); }
+.oac-33 .pw-other { background-color: gradient(linear, 0% 0%, 0% 100%, from(#2e200daa), to(#12151caa)); }
+.oac-34 .pw-other { background-color: gradient(linear, 0% 0%, 0% 100%, from(#2e0d1faa), to(#12151caa)); }
+.oac-35 .pw-other { background-color: gradient(linear, 0% 0%, 0% 100%, from(#1a0d2eaa), to(#12151caa)); }
+.oac-36 .pw-other { background-color: gradient(linear, 0% 0%, 0% 100%, from(#0d2b2eaa), to(#12151caa)); }
 
 .pw-other-clip
 {
@@ -1169,18 +1333,22 @@ Label
 	background-repeat: no-repeat;
 }
 
+/* Badge L, neutral: Фон/Наведение + Граница/Обычная */
 .pw-other-badge
 {
 	horizontal-align: center;
+	height: 28px;
 	margin-top: 16px;
-	padding: 4px 12px;
-	border: 1px solid #ffffffa0;
+	padding: 0px 12px;
+	background-color: #20252e;
+	border: 1px solid #303641;
+	border-radius: 14px;
 }
 
 .pw-other-t
 {
-	font-size: 21px;
-	font-style: italic;
+	vertical-align: middle;
+	font-size: 16px;
 }
 
 .pw-other-sw
@@ -1265,7 +1433,7 @@ Label
 .pw-nv-s
 {
 	font-size: 15px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	width: 100%;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -1343,7 +1511,7 @@ Label
 .pw-count
 {
 	vertical-align: middle;
-	color: #93a4b6;
+	color: #aeb4bf;
 	font-size: 15px;
 	margin-right: 14px;
 }
@@ -1379,7 +1547,7 @@ Label
 	margin: 58px 14px 0px 0px;
 	flow-children: down;
 	padding: 4px;
-	background-color: #141b23;
+	background-color: #181c24;
 	border: 1px solid #ffffff30;
 	box-shadow: #000000c0 0px 12px 30px 0px;
 	ignore-parent-flow: true;
@@ -1443,6 +1611,11 @@ Label
 .acc-29 .pw-dd-i.on .pw-dd-t { color: #cbb7ff; }
 .acc-30 .pw-dd-i.on .pw-dd-t { color: #ffc7a3; }
 .acc-31 .pw-dd-i.on .pw-dd-t { color: #8d5a3b; }
+.acc-32 .pw-dd-i.on .pw-dd-t { color: #009bed; }
+.acc-33 .pw-dd-i.on .pw-dd-t { color: #f59e0b; }
+.acc-34 .pw-dd-i.on .pw-dd-t { color: #f3009a; }
+.acc-35 .pw-dd-i.on .pw-dd-t { color: #8b5cf6; }
+.acc-36 .pw-dd-i.on .pw-dd-t { color: #00e5ed; }
 
 .pw-chips
 {
@@ -1564,16 +1737,19 @@ Label
 {
 	width: 100%;
 	font-size: 13px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
+/* Badge M ("Equipped"), colour from eqa-N */
 .pw-eq
 {
 	horizontal-align: right;
+	height: 24px;
 	flow-children: right;
-	padding: 2px 6px 2px 8px;
+	padding: 0px 8px;
+	border-radius: 12px;
 	ignore-parent-flow: true;
 	visibility: collapse;
 }
@@ -1585,7 +1761,7 @@ Label
 
 .pw-eq-t
 {
-	font-size: 13px;
+	font-size: 14px;
 	vertical-align: middle;
 }
 
@@ -1698,7 +1874,7 @@ Label
 {
 	vertical-align: middle;
 	font-size: 16px;
-	color: #c9d3de;
+	color: #ced2d9;
 	margin: 0px 10px;
 }
 
@@ -1738,7 +1914,7 @@ Label
 .pw-shd-k
 {
 	font-size: 14px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 .pw-shd-n
@@ -1749,16 +1925,21 @@ Label
 	white-space: nowrap;
 }
 
+/* Badge M (rarity name; the text keeps the CS2 rarity colour) */
 .pw-rchip
 {
 	vertical-align: middle;
+	height: 24px;
 	margin-left: 16px;
-	padding: 3px 10px;
-	background-color: #00000040;
+	padding: 0px 8px;
+	background-color: #20252e;
+	border: 1px solid #303641;
+	border-radius: 12px;
 }
 
 .pw-rchip-t
 {
+	vertical-align: middle;
 	font-size: 14px;
 }
 
@@ -1894,7 +2075,7 @@ Label
 	width: 12px;
 	height: 12px;
 	horizontal-align: center;
-	border: 2px solid #d8d8d8;
+	border: 2px solid #ced2d9;
 	border-radius: 6px;
 }
 
@@ -1968,11 +2149,16 @@ Label
 .acc-29 .pw-gcell:hover { background-color: #cbb7ff22; border: 1px solid #cbb7ff; }
 .acc-30 .pw-gcell:hover { background-color: #ffc7a322; border: 1px solid #ffc7a3; }
 .acc-31 .pw-gcell:hover { background-color: #8d5a3b22; border: 1px solid #8d5a3b; }
+.acc-32 .pw-gcell:hover { background-color: #009bed22; border: 1px solid #009bed; }
+.acc-33 .pw-gcell:hover { background-color: #f59e0b22; border: 1px solid #f59e0b; }
+.acc-34 .pw-gcell:hover { background-color: #f3009a22; border: 1px solid #f3009a; }
+.acc-35 .pw-gcell:hover { background-color: #8b5cf622; border: 1px solid #8b5cf6; }
+.acc-36 .pw-gcell:hover { background-color: #00e5ed22; border: 1px solid #00e5ed; }
 
 .pw-led,
 .pw-led2
 {
-	color: #ff9a4a;
+	color: #fbbf24;
 	font-size: 17px;
 	letter-spacing: 2px;
 }
@@ -1981,8 +2167,8 @@ Label
 {
 	margin: 24px 0px 0px 24px;
 	padding: 2px 10px;
-	background-color: #1a0d05cc;
-	border: 1px solid #ff8a3c66;
+	background-color: #2e200dcc;
+	border: 1px solid #f59e0b66;
 	visibility: collapse;
 }
 
@@ -2043,7 +2229,7 @@ Label
 {
 	vertical-align: middle;
 	font-size: 15px;
-	color: #dde4ec;
+	color: #ced2d9;
 }
 
 .pw-phint
@@ -2091,7 +2277,7 @@ Label
 	vertical-align: middle;
 	font-size: 19px;
 	font-style: italic;
-	color: #93a4b6;
+	color: #aeb4bf;
 	margin-right: 10px;
 }
 
@@ -2122,7 +2308,7 @@ Label
 .pw-rs-n
 {
 	font-size: 12px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	margin: 2px 0px 0px 5px;
 }
 
@@ -2186,13 +2372,18 @@ Label
 .acc-29 .pw-rs-mod { color: #cbb7ff; }
 .acc-30 .pw-rs-mod { color: #ffc7a3; }
 .acc-31 .pw-rs-mod { color: #8d5a3b; }
+.acc-32 .pw-rs-mod { color: #009bed; }
+.acc-33 .pw-rs-mod { color: #f59e0b; }
+.acc-34 .pw-rs-mod { color: #f3009a; }
+.acc-35 .pw-rs-mod { color: #8b5cf6; }
+.acc-36 .pw-rs-mod { color: #00e5ed; }
 
 .pw-facts
 {
 	width: 100%;
 	margin-top: 6px;
 	font-size: 14px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 /* right column */
@@ -2244,7 +2435,7 @@ Label
 	horizontal-align: center;
 	font-size: 20px;
 	font-style: italic;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 .pw-tab.on .pw-tab-t
@@ -2252,12 +2443,16 @@ Label
 	color: #ffffff;
 }
 
+/* Badge S counter: Фон/Наведение */
 .pw-tab-c
 {
 	vertical-align: middle;
-	font-size: 13px;
-	color: #93a4b6;
-	margin-left: 6px;
+	font-size: 12px;
+	color: #aeb4bf;
+	margin-left: 8px;
+	padding: 2px 8px;
+	background-color: #20252e;
+	border-radius: 10px;
 }
 
 .pw-params,
@@ -2320,7 +2515,7 @@ Label
 .pw-h5-s
 {
 	font-size: 14px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	vertical-align: bottom;
 	margin: 0px 0px 2px 10px;
 }
@@ -2347,7 +2542,7 @@ Label
 
 .pw-sec.lock .pw-h5-s
 {
-	color: #e06c5c;
+	color: #f87171;
 }
 
 .pw-lock-tab
@@ -2459,7 +2654,7 @@ Label
 {
 	horizontal-align: center;
 	font-size: 11px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 .pw-track
@@ -2583,18 +2778,18 @@ Label
 	width: 20px;
 	height: 20px;
 	margin: 3px 0px 0px 3px;
-	background-color: #8b97a4;
+	background-color: #858d9b;
 }
 
 .pw-sw.on
 {
-	border: 1px solid #ff8a3c;
+	border: 1px solid #009bed;
 }
 
 .pw-sw.on .pw-sw-k
 {
 	margin: 3px 0px 0px 25px;
-	background-color: #ff8a3c;
+	background-color: #009bed;
 }
 
 .pw-st-state
@@ -2628,7 +2823,7 @@ Label
 {
 	vertical-align: middle;
 	font-size: 17px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	margin-right: 10px;
 }
 
@@ -2681,7 +2876,7 @@ Label
 {
 	vertical-align: middle;
 	font-size: 15px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	margin-left: 6px;
 }
 
@@ -2740,7 +2935,7 @@ Label
 	horizontal-align: center;
 	vertical-align: middle;
 	font-size: 17px;
-	color: #c7d2dd;
+	color: #ced2d9;
 }
 
 .pw-sqi
@@ -2777,7 +2972,7 @@ Label
 {
 	margin: 62px 0px 0px 18px;
 	padding: 4px;
-	background-color: #141b23;
+	background-color: #181c24;
 	border: 1px solid #ffffff30;
 	box-shadow: #000000c0 0px 12px 30px 0px;
 	ignore-parent-flow: true;
@@ -2841,7 +3036,7 @@ Label
 	vertical-align: middle;
 	margin-left: 6px;
 	font-size: 12px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 /* theme colours: generated by gen_layout.py (PALETTE) */
@@ -2877,6 +3072,11 @@ Label
 .acc-29 .pw-dd-i.on .pw-sdi-t { color: #cbb7ff; }
 .acc-30 .pw-dd-i.on .pw-sdi-t { color: #ffc7a3; }
 .acc-31 .pw-dd-i.on .pw-sdi-t { color: #8d5a3b; }
+.acc-32 .pw-dd-i.on .pw-sdi-t { color: #009bed; }
+.acc-33 .pw-dd-i.on .pw-sdi-t { color: #f59e0b; }
+.acc-34 .pw-dd-i.on .pw-sdi-t { color: #f3009a; }
+.acc-35 .pw-dd-i.on .pw-sdi-t { color: #8b5cf6; }
+.acc-36 .pw-dd-i.on .pw-sdi-t { color: #00e5ed; }
 
 .pw-rarf
 {
@@ -2929,7 +3129,7 @@ Label
 	margin: 0px 0px 14px 16px;
 	flow-children: right;
 	padding: 7px 8px 7px 10px;
-	background-color: #0b1016d8;
+	background-color: #0b0d12d8;
 	border: 1px solid #ffffff1c;
 	visibility: collapse;
 }
@@ -2979,6 +3179,11 @@ Label
 .acc-29 .pw-sbar { border-left: 3px solid #cbb7ff; }
 .acc-30 .pw-sbar { border-left: 3px solid #ffc7a3; }
 .acc-31 .pw-sbar { border-left: 3px solid #8d5a3b; }
+.acc-32 .pw-sbar { border-left: 3px solid #009bed; }
+.acc-33 .pw-sbar { border-left: 3px solid #f59e0b; }
+.acc-34 .pw-sbar { border-left: 3px solid #f3009a; }
+.acc-35 .pw-sbar { border-left: 3px solid #8b5cf6; }
+.acc-36 .pw-sbar { border-left: 3px solid #00e5ed; }
 
 .pw-sbar-top,
 .pw-edhd
@@ -3029,7 +3234,7 @@ Label
 {
 	width: 100%;
 	font-size: 13px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -3078,7 +3283,7 @@ Label
 {
 	width: 100%;
 	font-size: 15px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	white-space: normal;
 }
 
@@ -3087,7 +3292,7 @@ Label
 	horizontal-align: right;
 	margin: 6px 18px 0px 0px;
 	font-size: 13px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 .pw-sgrid
@@ -3155,10 +3360,13 @@ Label
 	white-space: nowrap;
 }
 
+/* Badge S */
 .pw-kbadge
 {
 	horizontal-align: right;
-	padding: 1px 6px;
+	height: 20px;
+	padding: 0px 8px;
+	border-radius: 10px;
 	ignore-parent-flow: true;
 	visibility: collapse;
 }
@@ -3170,7 +3378,8 @@ Label
 
 .pw-kbadge-t
 {
-	font-size: 11px;
+	vertical-align: middle;
+	font-size: 12px;
 }
 
 /* editors */
@@ -3212,7 +3421,7 @@ Label
 	width: 22px;
 	vertical-align: middle;
 	font-size: 18px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 .pw-xy .pw-mut
@@ -3320,7 +3529,7 @@ Label
 .pw-keys,
 .pw-kfoot
 {
-	background-color: #121a23;
+	background-color: #12151c;
 }
 
 .pw-kbh
@@ -3375,12 +3584,17 @@ Label
 .acc-29 .pw-kbh-t { color: #cbb7ff; }
 .acc-30 .pw-kbh-t { color: #ffc7a3; }
 .acc-31 .pw-kbh-t { color: #8d5a3b; }
+.acc-32 .pw-kbh-t { color: #009bed; }
+.acc-33 .pw-kbh-t { color: #f59e0b; }
+.acc-34 .pw-kbh-t { color: #f3009a; }
+.acc-35 .pw-kbh-t { color: #8b5cf6; }
+.acc-36 .pw-kbh-t { color: #00e5ed; }
 
 .pw-kbh-w
 {
 	vertical-align: bottom;
 	font-size: 17px;
-	color: #d2dae3;
+	color: #ced2d9;
 	margin-bottom: 6px;
 }
 
@@ -3440,12 +3654,17 @@ Label
 .acc-29 .pw-car { background-color: #cbb7ff; }
 .acc-30 .pw-car { background-color: #ffc7a3; }
 .acc-31 .pw-car { background-color: #8d5a3b; }
+.acc-32 .pw-car { background-color: #009bed; }
+.acc-33 .pw-car { background-color: #f59e0b; }
+.acc-34 .pw-car { background-color: #f3009a; }
+.acc-35 .pw-car { background-color: #8b5cf6; }
+.acc-36 .pw-car { background-color: #00e5ed; }
 
 .pw-kd-lim
 {
 	vertical-align: middle;
 	font-size: 14px;
-	color: #93a4b6;
+	color: #aeb4bf;
 	margin-right: 16px;
 }
 
@@ -3454,12 +3673,12 @@ Label
 	width: 100%;
 	padding: 0px 24px 6px 24px;
 	font-size: 15px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 .kb-err .pw-khint
 {
-	color: #ff8a7a;
+	color: #f87171;
 }
 
 .pw-keys
@@ -3567,7 +3786,7 @@ Label
 .pw-mutk
 {
 	font-size: 16px;
-	color: #93a4b6;
+	color: #aeb4bf;
 }
 
 .pw-kfoot
@@ -3642,8 +3861,8 @@ Label
 	vertical-align: bottom;
 	margin-bottom: 28px;
 	padding: 10px 20px;
-	background-color: #0f1a12f0;
-	border: 1px solid #5fbf6f;
+	background-color: #0d2e1cf0;
+	border: 1px solid #22c55e;
 	ignore-parent-flow: true;
 	opacity: 0;
 	transition-property: opacity;
@@ -3657,14 +3876,14 @@ Label
 
 .toast-err .pw-toast
 {
-	background-color: #2a1010f0;
-	border: 1px solid #e05a4a;
+	background-color: #2e0d0df0;
+	border: 1px solid #ef4444;
 }
 
 .pw-toast-t
 {
 	font-size: 17px;
-	color: #d8f0dc;
+	color: #f6f7f9;
 }
 
 /* ---------- chat prompt (sibling of #pw-root) ---------- */
@@ -3681,8 +3900,8 @@ Label
 	width: 100%;
 	flow-children: down;
 	padding: 22px 30px 20px 30px;
-	background-color: #101418ee;
-	border: 2px solid #f0c040;
+	background-color: #12151cee;
+	border: 2px solid #fbbf24;
 	box-shadow: #000000c0 0px 20px 60px 0px;
 }
 
@@ -3690,7 +3909,7 @@ Label
 {
 	horizontal-align: right;
 	font-size: 14px;
-	color: #889aa8;
+	color: #858d9b;
 	ignore-parent-flow: true;
 }
 
@@ -3699,7 +3918,7 @@ Label
 	horizontal-align: center;
 	font-size: 46px;
 	font-style: italic;
-	color: #f0c040;
+	color: #fbbf24;
 }
 
 .pw-ch-what
@@ -3716,7 +3935,7 @@ Label
 	width: 100%;
 	white-space: normal;
 	font-size: 16px;
-	color: #aab4c0;
+	color: #aeb4bf;
 	margin-top: 12px;
 }
 
@@ -3724,7 +3943,7 @@ Label
 {
 	horizontal-align: center;
 	font-size: 16px;
-	color: #ff7b6b;
+	color: #f87171;
 	margin-top: 8px;
 }
 
