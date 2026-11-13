@@ -1,0 +1,324 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using static src.jRandomSkills;
+using System.Collections.Concurrent;
+using src.utils;
+
+namespace src.player.skills
+{
+    public class WeaponsSwap : ISkill
+    {
+        private const Skills skillName = Skills.WeaponsSwap;
+        private static readonly ConcurrentDictionary<uint, PlayerSkillInfo> SkillPlayerInfo = [];
+        private static readonly object setLock = new();
+
+        private static HashSet<string> weapons => WeaponPool.All;
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void NewRound()
+        {
+            lock (setLock)
+                SkillPlayerInfo.Clear();
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            SkillPlayerInfo.TryAdd(player.Key(), new PlayerSkillInfo
+            {
+                SteamID = player.Key(),
+                CanUse = true,
+                Cooldown = DateTime.MinValue,
+                LastClick = DateTime.MinValue,
+                FindedEnemy = true,
+                HaveWeapon = true,
+            });
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            SkillPlayerInfo.TryRemove(player.Key(), out _);
+            SkillUtils.ResetPrintHTML(player);
+        }
+
+        public static void OnTick()
+        {
+            if (SkillPlayerInfo.IsEmpty || !SkillUtils.IsHudFrame()) return;
+
+            var players = PlayerManager.GetTickPlayers().ToArray();
+            foreach (var player in players)
+            {
+                var playerInfo = PlayerManager.GetPlayer(player);
+                if (playerInfo?.Skill != skillName) continue;
+
+                if (SkillPlayerInfo.TryGetValue(player.Key(), out var skillInfo))
+                {
+                    bool recentClick = skillInfo.LastClick.AddSeconds(4) >= DateTime.Now;
+                    UpdateHUD(player, skillInfo, recentClick);
+                }
+            }
+        }
+
+        private static void UpdateHUD(CCSPlayerController player, PlayerSkillInfo skillInfo, bool showInfo)
+        {
+            float cooldown = 0;
+            if (skillInfo != null)
+            {
+                float time = (int)Math.Ceiling((skillInfo.Cooldown.AddSeconds(SkillsInfo.GetValue<float>(skillName, "cooldown")) - DateTime.Now).TotalSeconds);
+                cooldown = Math.Max(time, 0);
+
+                if (cooldown == 0 && skillInfo?.CanUse == false)
+                    skillInfo.CanUse = true;
+            }
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+
+            if (cooldown == 0)
+            {
+                if (showInfo)
+                    playerInfo.PrintHTML =
+                        skillInfo != null && !skillInfo.FindedEnemy
+                            ? $"<font color='#FF0000'>{player.GetTranslation("hud_info_no_enemy")}</font>"
+                            : skillInfo != null && !skillInfo.HaveWeapon ? $"<font color='#FF0000'>{player.GetTranslation("weaponsswap_hud_info2")}</font>" : null;
+                else
+                    SkillUtils.ResetPrintHTML(player);
+                return;
+            }
+
+            playerInfo.PrintHTML = $"{player.GetTranslation("hud_info", $"<font color='#FF0000'>{cooldown}</font>")}";
+        }
+
+        public static void UseSkill(CCSPlayerController player)
+        {
+            var playerPawn = player.PlayerPawn.Value;
+            if (playerPawn?.CBodyComponent == null) return;
+
+            if (SkillPlayerInfo.TryGetValue(player.Key(), out var skillInfo))
+            {
+                if (!player.IsValid || player.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+                if (skillInfo.CanUse)
+                {
+                    CCSPlayerController? enemy = GetRandomEnemy(player);
+                    if (enemy == null)
+                    {
+                        skillInfo.FindedEnemy = false;
+                        skillInfo.LastClick = DateTime.Now;
+                        return;
+                    }
+
+                    (WeaponInfo[]? playerWeapon, bool playerC4) = GetWeapons(player);
+                    (WeaponInfo[]? enemyWeapon, bool enemyC4) = GetWeapons(enemy);
+
+                    if (playerWeapon == null || !playerWeapon.Any(w => weapons.Contains(w.Name))
+                        || enemyWeapon == null || !enemyWeapon.Any(w => weapons.Contains(w.Name)))
+                    {
+                        skillInfo.FindedEnemy = true;
+                        skillInfo.HaveWeapon = false;
+                        skillInfo.LastClick = DateTime.Now;
+                        return;
+                    }
+
+                    skillInfo.HaveWeapon = true;
+                    skillInfo.FindedEnemy = true;
+                    skillInfo.CanUse = false;
+                    skillInfo.Cooldown = DateTime.Now;
+
+                    RemoveC4(player);
+                    RemoveC4(enemy);
+
+                    Server.NextFrame(() =>
+                    {
+                        if (player == null || !player.IsValid) return;
+                        if (enemy == null || !enemy.IsValid) return;
+
+                        var playerGear = SnapshotGear(player);
+                        var enemyGear = SnapshotGear(enemy);
+
+                        player.RemoveWeapons();
+                        enemy.RemoveWeapons();
+                        GiveWeapons(player, enemyWeapon, playerC4);
+                        GiveWeapons(enemy, playerWeapon, (enemyWeapon != null && enemyC4));
+
+                        RestoreGear(player, playerGear);
+                        RestoreGear(enemy, enemyGear);
+                    });
+                }
+                else
+                    skillInfo.LastClick = DateTime.Now;
+            }
+        }
+
+        private static GearInfo? SnapshotGear(CCSPlayerController player)
+        {
+            var pawn = player.PlayerPawn?.Value;
+            if (pawn == null || !pawn.IsValid) return null;
+
+            var itemServices = pawn.ItemServices?.As<CCSPlayer_ItemServices>();
+
+            return new GearInfo
+            {
+                Armor = pawn.ArmorValue,
+                Health = pawn.Health,
+                HasHelmet = itemServices?.HasHelmet ?? false,
+                HasDefuser = itemServices?.HasDefuser ?? false,
+            };
+        }
+
+        private static void RestoreGear(CCSPlayerController player, GearInfo? gear)
+        {
+            if (gear == null) return;
+
+            var pawn = player.PlayerPawn?.Value;
+            if (pawn == null || !pawn.IsValid) return;
+
+            if (pawn.ArmorValue != gear.Armor)
+            {
+                pawn.ArmorValue = gear.Armor;
+                NetStateFast.Changed(pawn, "CCSPlayerPawn", "m_ArmorValue");
+            }
+
+            if (pawn.Health != gear.Health)
+            {
+                pawn.Health = gear.Health;
+                NetStateFast.Changed(pawn, "CBaseEntity", "m_iHealth");
+            }
+
+            var itemServices = pawn.ItemServices?.As<CCSPlayer_ItemServices>();
+            if (itemServices == null) return;
+
+            itemServices.HasHelmet = gear.HasHelmet;
+            itemServices.HasDefuser = gear.HasDefuser;
+        }
+
+        private static (WeaponInfo[]?, bool) GetWeapons(CCSPlayerController player)
+        {
+            bool haveC4 = false;
+
+            var pawn = player.PlayerPawn.Value;
+            if (pawn == null || !pawn.IsValid || player.LifeState != (byte)LifeState_t.LIFE_ALIVE) return (null, haveC4);
+
+            if (pawn.WeaponServices == null) return (null, haveC4);
+
+            var list = new List<WeaponInfo>();
+            foreach (var weapon in pawn.WeaponServices.MyWeapons)
+                if (weapon != null && weapon.IsValid && weapon.Value != null && weapon.Value.IsValid && !string.IsNullOrEmpty(weapon.Value.DesignerName))
+                {
+                    if (weapon.Value.DesignerName == "weapon_c4")
+                        haveC4 = true;
+                    else
+                    {
+                        list.Add(
+                            new WeaponInfo
+                            {
+                                Name = SkillUtils.GetDesignerName(weapon.Value),
+                                Clip1 = weapon.Value.Clip1,
+                                Clip2 = weapon.Value.Clip2,
+                                Reserve = weapon.Value.ReserveAmmo.Length >= 1 ? weapon.Value.ReserveAmmo[0] : 0,
+                            });
+                    }
+                }
+
+            return (list.Count == 0 ? null : [.. list], haveC4);
+        }
+
+        private static void GiveWeapons(CCSPlayerController player, WeaponInfo[]? weapons, bool addC4)
+        {
+            if (weapons == null) return;
+            uint index = player.Key();
+
+            foreach (var weapon in weapons)
+                player.GiveNamedItem(weapon.Name);
+
+            if (addC4)
+                player.GiveNamedItem("weapon_c4");
+
+            Server.NextFrame(() =>
+            {
+                var player = PlayerManager.GetController(index);
+                if (player == null || !player.IsValid) return;
+
+                var pawn = player.PlayerPawn.Value;
+                if (pawn == null || !pawn.IsValid) return;
+
+                if (pawn.WeaponServices == null) return;
+
+                foreach (var item in pawn.WeaponServices.MyWeapons)
+                    if (item != null && item.IsValid)
+                    {
+                        var weapon = item.Value;
+                        if (weapon == null || !weapon.IsValid || string.IsNullOrEmpty(weapon.DesignerName)) continue;
+
+                        var enemyWeapon = weapons.FirstOrDefault(w => w.Name == SkillUtils.GetDesignerName(weapon));
+                        if (enemyWeapon == null) continue;
+
+                        weapon.Clip1 = enemyWeapon.Clip1;
+                        weapon.Clip2 = enemyWeapon.Clip2;
+                        weapon.ReserveAmmo.Fill(enemyWeapon.Reserve);
+
+                        NetStateFast.Changed(weapon, "CBasePlayerWeapon", "m_iClip1");
+                        NetStateFast.Changed(weapon, "CBasePlayerWeapon", "m_iClip2");
+                        NetStateFast.Changed(weapon, "CBasePlayerWeapon", "m_pReserveAmmo");
+                    }
+            });
+        }
+
+        private static CCSPlayerController? GetRandomEnemy(CCSPlayerController player)
+        {
+            CCSPlayerController[] enemies = [.. PlayerManager.GetTickPlayers().FindAll(e =>
+                e != null && e.IsValid
+                && e.Team != player.Team && e.Team != CsTeam.Spectator && e.Team != CsTeam.None
+                && e.LifeState == (byte)LifeState_t.LIFE_ALIVE
+                && e.PlayerPawn?.Value != null && e.PlayerPawn.Value.IsValid
+                && e.PlayerPawn.Value.Health > 0)];
+            if (enemies.Length == 0) return null;
+            return enemies[Instance.Random.Next(enemies.Length)];
+        }
+
+        private static void RemoveC4(CCSPlayerController player)
+        {
+            var pawn = player.PlayerPawn.Value;
+            if (pawn == null || !pawn.IsValid || pawn.WeaponServices == null) return;
+
+            foreach (var item in pawn.WeaponServices.MyWeapons)
+                if (item != null && item.IsValid && item.Value != null && item.Value.IsValid && item.Value.DesignerName == "weapon_c4")
+                    SkillUtils.SafeKillEntity<CBasePlayerWeapon>((uint)item.Value.Index);
+        }
+
+        public class PlayerSkillInfo
+        {
+            public ulong SteamID { get; set; }
+            public bool CanUse { get; set; }
+            public DateTime Cooldown { get; set; }
+            public DateTime LastClick { get; set; }
+            public bool FindedEnemy { get; set; }
+            public bool HaveWeapon { get; set; }
+        }
+
+        public class GearInfo
+        {
+            public required int Armor { get; set; }
+            public required int Health { get; set; }
+            public required bool HasHelmet { get; set; }
+            public required bool HasDefuser { get; set; }
+        }
+
+        public class WeaponInfo
+        {
+            public required string Name { get; set; }
+            public required int Clip1 { get; set; }
+            public required int Clip2 { get; set; }
+            public required int Reserve { get; set; }
+
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#c7e03a", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, float cooldown = 30f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float Cooldown { get; set; } = cooldown;
+        }
+    }
+}

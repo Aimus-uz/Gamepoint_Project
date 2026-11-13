@@ -1,0 +1,188 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using CounterStrikeSharp.API.Modules.Utils;
+using static src.jRandomSkills;
+using System.Collections.Concurrent;
+using src.utils;
+
+namespace src.player.skills
+{
+    public class Fortnite : ISkill
+    {
+        private const Skills skillName = Skills.Fortnite;
+        private static readonly ConcurrentDictionary<uint, PlayerSkillInfo> SkillPlayerInfo = [];
+        private static readonly ConcurrentDictionary<uint, int> barricades = [];
+        public static bool skillInThisRound = false;
+        private static readonly object setLock = new();
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"), false);
+            Instance.AddToManifest(SkillsInfo.GetValue<string>(skillName, "propModel"));
+        }
+
+        public static void NewRound()
+        {
+            skillInThisRound = false;
+            lock (setLock)
+            {
+                SkillPlayerInfo.Clear();
+                barricades.Clear();
+            }
+        }
+
+        public static void OnTick()
+        {
+            if (!SkillUtils.IsHudFrame()) return;
+            foreach (var player in PlayerManager.GetTickPlayers())
+            {
+                var playerInfo = PlayerManager.GetPlayer(player);
+                if (playerInfo?.Skill == skillName)
+                    if (SkillPlayerInfo.TryGetValue(player.Key(), out var skillInfo))
+                        UpdateHUD(player, skillInfo);
+            }
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            skillInThisRound = true;
+            SkillPlayerInfo.TryAdd(player.Key(), new PlayerSkillInfo
+            {
+                SteamID = player.Key(),
+                CanUse = true,
+                Cooldown = DateTime.MinValue,
+            });
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            SkillPlayerInfo.TryRemove(player.Key(), out _);
+            SkillUtils.ResetPrintHTML(player);
+        }
+
+        private static void UpdateHUD(CCSPlayerController player, PlayerSkillInfo skillInfo)
+        {
+            float cooldown = 0;
+            if (skillInfo != null)
+            {
+                float time = (int)Math.Ceiling((skillInfo.Cooldown.AddSeconds(SkillsInfo.GetValue<float>(skillName, "cooldown")) - DateTime.Now).TotalSeconds);
+                cooldown = Math.Max(time, 0);
+
+                if (cooldown == 0 && skillInfo?.CanUse == false)
+                    skillInfo.CanUse = true;
+            }
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+
+            if (cooldown == 0)
+                playerInfo.PrintHTML = null;
+            else
+                playerInfo.PrintHTML = $"{player.GetTranslation("hud_info", $"<font color='#FF0000'>{cooldown}</font>")}";
+        }
+
+        public static void UseSkill(CCSPlayerController player)
+        {
+            var playerPawn = player.PlayerPawn.Value;
+            if (playerPawn?.CBodyComponent == null) return;
+
+            if (SkillPlayerInfo.TryGetValue(player.Key(), out var skillInfo))
+            {
+                if (!player.IsValid || player.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+
+                if (skillInfo.CanUse)
+                {
+                    skillInfo.CanUse = false;
+                    skillInfo.Cooldown = DateTime.Now;
+                    CreateBox(player);
+                }
+            }
+        }
+
+        private static void CreateBox(CCSPlayerController player)
+        {
+            var playerPawn = player.PlayerPawn.Value;
+            var box = EntityManager.CreateTrackedPropOverride(player.Key());
+            if (box == null || playerPawn == null || !playerPawn.IsValid || playerPawn.AbsOrigin == null || playerPawn.AbsRotation == null) return;
+
+            float distance = 50;
+            Vector pos = playerPawn.AbsOrigin + SkillUtils.GetForwardVector(playerPawn.AbsRotation) * distance;
+            QAngle angle = new(playerPawn.AbsRotation.X, playerPawn.V_angle.Y + 90, playerPawn.AbsRotation.Z);
+
+            box.Entity!.Name = $"FortniteWall_{Server.TickCount}";
+            box.Collision.SolidType = SolidType_t.SOLID_VPHYSICS;
+            box.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags = (uint)(box.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags & ~(1 << 2));
+            box.Health = box.MaxHealth = 1_000_000;
+
+            var keys = new CEntityKeyValues();
+            try
+            {
+                keys.SetString("model", SkillsInfo.GetValue<string>(skillName, "propModel"));
+                keys.SetVector("origin", pos);
+                keys.SetBool("solid", true);
+                box.DispatchSpawn(keys);
+            }
+            finally
+            {
+                keys.Dispose();
+            }
+
+            if (!box.IsValid) return;
+            box.Teleport(pos, angle, null);
+
+            barricades.TryAdd(box.Index, SkillsInfo.GetValue<int>(skillName, "barricadeHealth"));
+
+            Server.NextFrame(() =>
+            {
+                if (box == null || !box.IsValid) return;
+                box.Teleport(pos, angle, null);
+                NetStateFast.Changed(box, "CBaseEntity", "m_CBodyComponent");
+            });
+        }
+
+        public static void OnTakeDamage(CBaseEntity damagedEntity, CTakeDamageInfo damageInfo)
+        {
+            if (SkillsInfo.GetValue<bool>(skillName, "disableOnFreezeTime") && SkillUtils.IsFreezeTime()) return;
+
+            if (damagedEntity == null || damagedEntity.Entity == null || damageInfo == null || damageInfo.Attacker == null || damageInfo.Attacker.Value == null)
+                return;
+
+            if (string.IsNullOrEmpty(damagedEntity.Entity.Name)) return;
+            if (!damagedEntity.Entity.Name.StartsWith("FortniteWall")) return;
+
+            var box = damagedEntity.As<CDynamicProp>();
+            if (box == null || !box.IsValid) return;
+            box.EmitSound("Wood_Plank.BulletImpact", volume: SkillsInfo.GetValue<float>(skillName, "soundVolume"));
+
+            if (barricades.TryGetValue(box.Index, out int health))
+            {
+                int newHealth = health - (int)damageInfo.Damage;
+
+                if (newHealth <= 0)
+                {
+                    barricades.TryRemove(box.Index, out _);
+                    EntityManager.DestroyEntity(box.Index);
+                }
+                else
+                    barricades.AddOrUpdate(box.Index, newHealth, (k, v) => newHealth);
+            }
+            else EntityManager.DestroyEntity(box.Index);
+        }
+
+        public class PlayerSkillInfo
+        {
+            public ulong SteamID { get; set; }
+            public bool CanUse { get; set; }
+            public DateTime Cooldown { get; set; }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#1b04cc", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = true, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = 5, Rarity rarity = Rarity.Common, float cooldown = 2f, int barricadeHealth = 115, string propModel = "models/props/de_aztec/hr_aztec/aztec_scaffolding/aztec_scaffold_wall_support_128.vmdl", float soundVolume = 1f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float SoundVolume { get; set; } = soundVolume;
+            public float Cooldown { get; set; } = cooldown;
+            public int BarricadeHealth { get; set; } = barricadeHealth;
+            public string PropModel { get; set; } = propModel;
+        }
+    }
+}

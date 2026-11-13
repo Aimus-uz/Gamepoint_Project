@@ -1,0 +1,258 @@
+﻿using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes;
+using CounterStrikeSharp.API.Modules.Memory;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using src.player.skills;
+using src.utils;
+using static CounterStrikeSharp.API.Core.Listeners;
+using static src.jRandomSkills;
+
+namespace src.player
+{
+    public static partial class Event
+    {
+        private static HookResult BombBeginplant(EventBombBeginplant @event, GameEventInfo info)
+        {
+            lock (setLock)
+            {
+                DispatchToActiveSkills("BombBeginplant", @event);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult BombAbortplant(EventBombAbortplant @event, GameEventInfo info)
+        {
+            lock (setLock)
+            {
+                DispatchToActiveSkills("BombAbortplant", @event);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult BombPlanted(EventBombPlanted @event, GameEventInfo info)
+        {
+            lock (setLock)
+            {
+                PlayerManager.MarkBombPlanted();
+                DispatchToActiveSkills("BombPlanted", @event);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult BombBegindefuse(EventBombBegindefuse @event, GameEventInfo info)
+        {
+            lock (setLock)
+            {
+                DispatchToActiveSkills("BombBegindefuse", @event);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult DecoyStarted(EventDecoyStarted @event, GameEventInfo info)
+        {
+            lock (setLock)
+            {
+                DispatchToActiveSkills("DecoyStarted", @event);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult DecoyDetonate(EventDecoyDetonate @event, GameEventInfo info)
+        {
+            lock (setLock)
+            {
+                DispatchToActiveSkills("DecoyDetonate", @event);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult SmokegrenadeDetonate(EventSmokegrenadeDetonate @event, GameEventInfo info)
+        {
+            lock (setLock)
+            {
+                DispatchToActiveSkills("SmokegrenadeDetonate", @event);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult SmokegrenadeExpired(EventSmokegrenadeExpired @event, GameEventInfo info)
+        {
+            lock (setLock)
+            {
+                DispatchToActiveSkills("SmokegrenadeExpired", @event);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult OnEntityTakeDamagePre(CBaseEntity entity, CTakeDamageInfo info)
+        {
+            lock (setLock)
+            {
+                CountDamageResolution(info);
+                SkillUtils.TrackHealthBeforeHit(entity, info);
+
+                object[] args = [entity, info];
+                DispatchOnTakeDamage(entity, info, args);
+
+                if (Fortnite.skillInThisRound == true &&
+                    !Instance.SkillPlayer.Any(p => !p.IsDrawing && p.Skill == Skills.Fortnite))
+                    Instance.SkillAction("Fortnite", "OnTakeDamage", args);
+
+                SkillUtils.ApplyNativeKill(entity, info);
+                return HookResult.Continue;
+            }
+        }
+
+        private static int dmgTotal, dmgAttackerOk, dmgAbilityOk, dmgSameTeam;
+        private static DateTime dmgWindowStart = DateTime.Now;
+
+        private static void CountDamageResolution(CTakeDamageInfo info)
+        {
+            if (!PerfLog.Enabled || info == null) return;
+
+            dmgTotal++;
+
+            var attacker = info.Attacker?.Value;
+            if (attacker != null && attacker.IsValid)
+            {
+                dmgAttackerOk++;
+
+                var attackerPawn = new CCSPlayerPawn(attacker.Handle);
+                if (attackerPawn.IsValid && attackerPawn.DesignerName == "player") dmgSameTeam++;
+            }
+
+            var ability = info.Ability?.Value;
+            if (ability != null && ability.IsValid) dmgAbilityOk++;
+
+            if ((DateTime.Now - dmgWindowStart).TotalSeconds < 60) return;
+
+            if (dmgTotal > 0)
+                PerfLog.Info($"DMGHOOK total={dmgTotal} attacker={dmgAttackerOk} ability={dmgAbilityOk} playerAttacker={dmgSameTeam}");
+
+            dmgTotal = dmgAttackerOk = dmgAbilityOk = dmgSameTeam = 0;
+            dmgWindowStart = DateTime.Now;
+        }
+
+        private static void OnEntityTakeDamagePost(CBaseEntity entity, CTakeDamageInfo info, CTakeDamageResult result)
+        {
+            lock (setLock)
+            {
+                DispatchOnTakeDamage(entity, info, [entity, info, result], true);
+            }
+        }
+
+        private static HookResult OnTriggerEnter(DynamicHook hook)
+        {
+            lock (setLock)
+            {
+                CBaseTrigger trigger = hook.GetParam<CBaseTrigger>(0);
+                CBaseEntity entity = hook.GetParam<CBaseEntity>(1);
+
+                DispatchToActiveSkills("OnTriggerEnter", trigger, entity);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult OnTriggerExit(DynamicHook hook)
+        {
+            lock (setLock)
+            {
+                CBaseTrigger trigger = hook.GetParam<CBaseTrigger>(0);
+                CBaseEntity entity = hook.GetParam<CBaseEntity>(1);
+
+                DispatchToActiveSkills("OnTriggerExit", trigger, entity);
+                return HookResult.Continue;
+            }
+        }
+
+        private static HookResult OnWeaponCanAcquire(DynamicHook hook)
+        {
+            lock (setLock)
+            {
+                CCSPlayer_ItemServices itemServices = hook.GetParam<CCSPlayer_ItemServices>(0);
+                if (itemServices == null || itemServices.Pawn.Value == null || !itemServices.Pawn.Value.IsValid) return HookResult.Continue;
+
+                CEconItemView econItem = hook.GetParam<CEconItemView>(1);
+                if (econItem == null) return HookResult.Continue;
+
+                CBasePlayerPawn pawn = itemServices.Pawn.Value;
+                if (pawn == null || !pawn.IsValid || pawn.Controller.Value == null || !pawn.Controller.Value.IsValid) return HookResult.Continue;
+
+                CCSPlayerController player = pawn.Controller.Value.As<CCSPlayerController>();
+                if (player == null || !player.IsValid) return HookResult.Continue;
+
+                var playerInfo = PlayerManager.GetPlayer(player);
+                if (playerInfo == null) return HookResult.Continue;
+
+                CCSWeaponBaseVData vdata = VirtualFunctions.GetCSWeaponDataFromKeyFunc.Invoke(-1, econItem.ItemDefinitionIndex.ToString());
+                if (vdata == null || vdata.Handle == IntPtr.Zero) return HookResult.Continue;
+
+                var activeSkills = Instance.SkillPlayer
+                    .Where(p => !p.IsDrawing)
+                    .Select(p => p.Skill.ToString())
+                    .Distinct();
+
+                bool block = false;
+                foreach (string skillName in activeSkills)
+                {
+                    bool? result = (bool?)Instance.SkillAction(skillName, "OnWeaponCanAcquire", [hook, player, econItem, vdata]);
+                    if (result == true)
+                    {
+                        block = true;
+                        break;
+                    }
+                }
+
+                return block ? HookResult.Handled : HookResult.Continue;
+            }
+        }
+
+        private static void EntitySpawned(CEntityInstance entity)
+        {
+            lock (setLock)
+            {
+                PlayerManager.NoteSpawnedEntity(entity);
+                DispatchToActiveSkills("OnEntitySpawned", entity);
+            }
+        }
+
+        public static void CheckTransmit([CastFrom(typeof(nint))] CCheckTransmitInfoList infoList)
+        {
+            long perfStart = PerfLog.Start();
+            lock (setLock)
+            {
+                try
+                {
+                    // Keep dying entities out of snapshots until the engine processes the kill.
+                    var dying = EntityManager.GetRecentlyDestroyedSnapshot();
+                    if (dying.Count > 0)
+                    {
+                        foreach (var (info, player) in infoList)
+                        {
+                            if (player == null || !player.IsValid) continue;
+                            foreach (var entityIndex in dying)
+                                SkillUtils.HideTransmitDormant(info, entityIndex);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Server.PrintToConsole($"[jRandomSkills] CheckTransmit dying-filter failed: {ex.Message}");
+                }
+
+                DispatchCheckTransmit([infoList]);
+            }
+            PerfLog.Sample("CheckTransmit", perfStart);
+        }
+
+        public static void EnableTransmit()
+        {
+            if (!isTransmitRegistered)
+            {
+                Instance?.RegisterListener<CheckTransmit>(CheckTransmit);
+                isTransmitRegistered = true;
+            }
+        }
+    }
+}

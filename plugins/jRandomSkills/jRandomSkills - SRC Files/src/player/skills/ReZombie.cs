@@ -1,0 +1,197 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using System.Collections.Concurrent;
+using System.Drawing;
+
+namespace src.player.skills
+{
+    public class ReZombie : ISkill
+    {
+        private const Skills skillName = Skills.ReZombie;
+        private static readonly ConcurrentDictionary<uint, int> zombies = [];
+        private static readonly object setLock = new();
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            SkillUtils.SetSkillHud(player, "rezombie_hud", SkillsInfo.GetValue<int>(skillName, "zombieHealth"));
+            zombies.TryRemove(player.Key(), out _);
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            SkillUtils.ResetPrintHTML(player);
+            if (player == null || !player.IsValid || player.PlayerPawn.Value == null || !player.PlayerPawn.Value.IsValid) return;
+            zombies.TryRemove(player.Key(), out _);
+            SetPlayerColor(player.PlayerPawn.Value, true);
+            ResetHealth(player);
+        }
+
+        public static void ResetHealth(CCSPlayerController player)
+        {
+            var pawn = player.PlayerPawn?.Value;
+            if (pawn == null) return;
+
+            pawn.MaxHealth = 100;
+            NetStateFast.Changed(pawn, "CBaseEntity", "m_iMaxHealth");
+
+            pawn.Health = Math.Min(pawn.Health, 100);
+            NetStateFast.Changed(pawn, "CBaseEntity", "m_iHealth");
+        }
+
+        public static void WeaponEquip(EventItemEquip @event)
+        {
+            var player = PlayerManager.GetPlayerEvent(@event.Userid);
+            var weapon = @event.Item;
+            if (player == null || !player.IsValid) return;
+
+            if (!zombies.ContainsKey(player.Key()) || weapon == "c4" || weapon.Contains("knife") || weapon.Contains("bayonet"))
+                return;
+
+            player.ExecuteClientCommand("slot3");
+        }
+
+        public static void NewRound()
+        {
+            foreach (var playerIndex in zombies.Keys)
+            {
+                var player = PlayerManager.GetController(playerIndex);
+                if (player == null || !player.IsValid) continue;
+
+                DisableSkill(player);
+            }
+            zombies.Clear();
+        }
+
+        public static void OnTakeDamage(CBaseEntity damagedEntity, CTakeDamageInfo damageInfo)
+        {
+            if (damagedEntity == null || !damagedEntity.IsValid || damageInfo == null) return;
+
+            var victimPawn = damagedEntity.As<CCSPlayerPawn>();
+            if (victimPawn == null || !victimPawn.IsValid || victimPawn.DesignerName != "player") return;
+
+            var victimController = victimPawn.Controller.Value;
+            if (victimController == null || !victimController.IsValid) return;
+
+            var victim = victimController.As<CCSPlayerController>();
+            if (victim == null || !victim.IsValid || !victim.PawnIsAlive) return;
+
+            var victimInfo = PlayerManager.GetPlayer(PlayerManager.GetPlayerEvent(victim) ?? victim);
+            if (victimInfo == null || victimInfo.Skill != skillName) return;
+
+            // Friendly-fire-off teammate hit deals 0 damage; don't zombify over a hit that never lands.
+            if (SkillUtils.IsFriendlyFireBlocked(damageInfo, victimPawn)) return;
+
+            if (!SkillUtils.IsPredictedLethal(damageInfo, victimPawn)) return; // survivable, let it through
+
+            if (TryBecomeZombie(victim, victimPawn))
+                damageInfo.Damage = 0;
+        }
+
+        public static bool TryBecomeZombie(CCSPlayerController? victim, CCSPlayerPawn? victimPawn)
+        {
+            if (victim == null || !victim.IsValid || !victim.PawnIsAlive) return false;
+            if (victimPawn == null || !victimPawn.IsValid) return false;
+
+            var victimInfo = PlayerManager.GetPlayer(PlayerManager.GetPlayerEvent(victim) ?? victim);
+            if (victimInfo == null || victimInfo.Skill != skillName) return false;
+
+            lock (setLock)
+            {
+                if (zombies.ContainsKey(victim.Key())) return false;
+                if (victim.TeamChanged) return false;
+
+                zombies[victim.Key()] = Server.TickCount;
+
+                int zombieHealth = SkillsInfo.GetValue<int>(skillName, "zombieHealth");
+                DropAllBotWeapons(victim);
+                SetPlayerColor(victimPawn, false);
+                SkillUtils.SetHealth(victimPawn, zombieHealth, zombieHealth);
+                victim.ExecuteClientCommand("slot3");
+
+                ApplyTurnTint(victim);
+                return true;
+            }
+        }
+
+        private static void ApplyTurnTint(CCSPlayerController victim)
+        {
+            int alpha = SkillsInfo.GetValue<int>(skillName, "A");
+            if (alpha <= 0) return;
+
+            SkillUtils.ApplyScreenColor(victim,
+                r: SkillsInfo.GetValue<int>(skillName, "R"),
+                g: SkillsInfo.GetValue<int>(skillName, "G"),
+                b: SkillsInfo.GetValue<int>(skillName, "B"),
+                a: alpha,
+                duration: 200,
+                holdTime: 600);
+        }
+
+        private static void DropAllBotWeapons(CCSPlayerController player)
+        {
+            if (player == null || !player.IsValid || !player.IsBot) return;
+
+            var pawn = player.PlayerPawn?.Value;
+            if (pawn == null || !pawn.IsValid) return;
+
+            var itemServices = pawn.ItemServices?.As<CCSPlayer_ItemServices>();
+            if (itemServices == null || pawn.WeaponServices?.MyWeapons == null) return;
+
+            foreach (var item in pawn.WeaponServices.MyWeapons)
+            {
+                if (item == null || !item.IsValid) continue;
+
+                var weapon = item.Value;
+                if (weapon == null || !weapon.IsValid) continue;
+
+                var weaponName = weapon.DesignerName;
+                if (string.IsNullOrEmpty(weaponName) || weaponName.Contains("knife") || weaponName.Contains("bayonet"))
+                    continue;
+
+                SkillUtils.SafeKillEntity<CBasePlayerWeapon>(weapon.Index);
+            }
+        }
+
+        public static bool OnWeaponCanAcquire(DynamicHook hook, CCSPlayerController player, CEconItemView econItem, CCSWeaponBaseVData vdata)
+        {
+            string weaponName = vdata.Name;
+            if (string.IsNullOrEmpty(weaponName)) return false;
+
+            if (!zombies.ContainsKey(player.Key()))
+                return false;
+
+            if (weaponName.Contains("knife") || weaponName.Contains("bayonet"))
+                return false;
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo?.Skill != skillName) return false;
+
+            hook.SetReturn(AcquireResult.InvalidItem);
+            return true;
+        }
+
+        private static void SetPlayerColor(CCSPlayerPawn pawn, bool normal)
+        {
+            var color = normal ? Color.FromArgb(255, 255, 255, 255) : Color.FromArgb(255, 255, 0, 0);
+            pawn.Render = color;
+            SkillUtils.NetworkChanged(pawn, "CBaseModelEntity", "m_clrRender");
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#ff5C0A", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, int zombieHealth = 500, int r = 255, int g = 0, int b = 0, int a = 60) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public int ZombieHealth { get; set; } = zombieHealth;
+            public int R { get; set; } = r;
+            public int G { get; set; } = g;
+            public int B { get; set; } = b;
+            public int A { get; set; } = a;
+        }
+    }
+}

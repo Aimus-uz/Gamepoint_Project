@@ -1,0 +1,85 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using static src.jRandomSkills;
+
+namespace src.player.skills
+{
+    public class Dracula : ISkill
+    {
+        private const Skills skillName = Skills.Dracula;
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            SkillUtils.SetSkillHud(player, "dracula_hud", (int)MathF.Round(SkillsInfo.GetValue<float>(skillName, "healthRegainScale") * 100f));
+        }
+
+        public static void PlayerHurt(EventPlayerHurt @event)
+        {
+            var attacker = PlayerManager.GetPlayerEvent(@event.Attacker);
+            var victim = PlayerManager.GetPlayerEvent(@event.Userid);
+
+            if (!Instance.IsPlayerValid(attacker) || victim == null || !victim.IsValid || attacker == victim) return;
+            var playerInfo = PlayerManager.GetPlayer(attacker);
+            if (playerInfo?.Skill != skillName) return;
+
+            HealAttacker(attacker!, SkillUtils.CapToVictimHealth(victim, @event.DmgHealth));
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            SkillUtils.ResetPrintHTML(player);
+            if (player == null || !player.IsValid) return;
+
+            var pawn = player.PlayerPawn?.Value;
+            if (pawn == null || !pawn.IsValid) return;
+
+            pawn.MaxHealth = 100;
+            NetStateFast.Changed(pawn, "CBaseEntity", "m_iMaxHealth");
+
+            if (pawn.Health > 100)
+            {
+                pawn.Health = 100;
+                NetStateFast.Changed(pawn, "CBaseEntity", "m_iHealth");
+            }
+        }
+
+        private static void HealAttacker(CCSPlayerController attacker, float damage)
+        {
+            int extraHealth = (int)(damage * SkillsInfo.GetValue<float>(skillName, "healthRegainScale"));
+            if (extraHealth <= 0) return;
+
+            uint attackerIndex = attacker.Key();
+
+            Server.NextFrame(() =>
+            {
+                var target = PlayerManager.GetController(attackerIndex);
+                if (target == null || !target.IsValid) return;
+
+                var attackerPawn = target.PlayerPawn?.Value;
+                if (attackerPawn == null || !attackerPawn.IsValid) return;
+
+                if (attackerPawn.LifeState != (byte)LifeState_t.LIFE_ALIVE || attackerPawn.Health <= 0) return;
+
+                attackerPawn.Health += extraHealth;
+                NetStateFast.Changed(attackerPawn, "CBaseEntity", "m_iHealth");
+
+                if (attackerPawn.MaxHealth < attackerPawn.Health)
+                {
+                    attackerPawn.MaxHealth = attackerPawn.Health;
+                    NetStateFast.Changed(attackerPawn, "CBaseEntity", "m_iMaxHealth");
+                }
+            });
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#FA050D", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, float healthRegainScale = .3f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float HealthRegainScale { get; set; } = healthRegainScale;
+        }
+    }
+}

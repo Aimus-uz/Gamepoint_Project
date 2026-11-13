@@ -1,0 +1,269 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Cvars;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using CounterStrikeSharp.API.Modules.Utils;
+using jRandomSkills.src.utils;
+using src.utils;
+using System.Collections.Concurrent;
+
+namespace src.player.skills
+{
+    public class ExplodingBarrel : ISkill
+    {
+        private const Skills skillName = Skills.ExplodingBarrel;
+        private static readonly QAngle angle = new(7, -3, 11);
+        private static readonly ConcurrentDictionary<uint, PlayerSkillInfo> SkillPlayerInfo = [];
+        private static readonly ConcurrentDictionary<uint, byte> consumedBarrels = [];
+        private static readonly ConcurrentDictionary<int, (byte Team, uint Owner)> nades = [];
+        private static readonly object setLock = new();
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+            jRandomSkills.Instance.AddToManifest(SkillsInfo.GetValue<string>(skillName, "propModel"));
+        }
+
+        public static void NewRound()
+        {
+            ClearAllBarrels();
+            lock (setLock)
+            {
+                SkillPlayerInfo.Clear();
+                consumedBarrels.Clear();
+                nades.Clear();
+            }
+        }
+
+        private static void ClearAllBarrels()
+        {
+            var entities = Utilities.FindAllEntitiesByDesignerName<CDynamicProp>("prop_dynamic_override");
+            foreach (var entity in entities)
+                if (entity != null && entity.IsValid && entity.Entity != null && (entity.Entity.Name?.StartsWith("Barrel_") ?? false))
+                    EntityManager.DestroyEntity(entity.Index);
+        }
+
+        public static void OnTick()
+        {
+            if (SkillPlayerInfo.IsEmpty || Server.TickCount % 8 != 0) return;
+
+            foreach (var player in PlayerManager.GetTickPlayers())
+            {
+                if (player == null || !player.IsValid) continue;
+                if (!SkillPlayerInfo.TryGetValue(player.Key(), out var skillInfo)) continue;
+
+                if (PlayerManager.GetPlayer(player)?.Skill == skillName)
+                    UpdateHUD(player, skillInfo);
+            }
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            SkillPlayerInfo.TryAdd(player.Key(), new PlayerSkillInfo
+            {
+                SteamID = player.Key(),
+                CanUse = true,
+                Cooldown = DateTime.MinValue,
+            });
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            if (player == null) return;
+            SkillPlayerInfo.TryRemove(player.Key(), out _);
+            EntityManager.DestroyPlayerEntities(player.Key());
+            SkillUtils.ResetPrintHTML(player);
+        }
+
+        private static void UpdateHUD(CCSPlayerController player, PlayerSkillInfo skillInfo)
+        {
+            float cooldown = 0;
+            if (skillInfo != null)
+            {
+                float time = (int)Math.Ceiling((skillInfo.Cooldown.AddSeconds(SkillsInfo.GetValue<float>(skillName, "cooldown")) - DateTime.Now).TotalSeconds);
+                cooldown = Math.Max(time, 0);
+
+                if (cooldown == 0 && skillInfo?.CanUse == false)
+                    skillInfo.CanUse = true;
+            }
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+
+            if (cooldown == 0)
+                playerInfo.PrintHTML = null;
+            else
+                playerInfo.PrintHTML = $"{player.GetTranslation("hud_info", $"<font color='#FF0000'>{cooldown}</font>")}";
+        }
+
+        public static void UseSkill(CCSPlayerController player)
+        {
+            if (player == null || !player.IsValid || player.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+
+            var playerPawn = player.PlayerPawn?.Value;
+            if (playerPawn?.CBodyComponent == null) return;
+
+            if (SkillPlayerInfo.TryGetValue(player.Key(), out var skillInfo) && skillInfo.CanUse)
+            {
+                skillInfo.CanUse = false;
+                skillInfo.Cooldown = DateTime.Now;
+                CreateBarrel(player);
+            }
+        }
+
+        private static void CreateBarrel(CCSPlayerController player)
+        {
+            var playerPawn = player.PlayerPawn?.Value;
+            if (playerPawn == null || !playerPawn.IsValid || playerPawn.AbsOrigin == null || playerPawn.AbsRotation == null)
+                return;
+
+            var barrel = EntityManager.CreateTrackedPropOverride(player.Key());
+            if (barrel == null || !barrel.IsValid)
+                return;
+
+            consumedBarrels.TryRemove(barrel.Index, out _);
+
+            float distance = 50;
+            Vector pos = playerPawn.AbsOrigin + SkillUtils.GetForwardVector(playerPawn.AbsRotation) * distance;
+            QAngle rotation = new(playerPawn.AbsRotation.X, playerPawn.AbsRotation.Y, playerPawn.AbsRotation.Z);
+
+            barrel.Entity!.Name = $"Barrel_{Server.TickCount}_{player.TeamNum}_{player.Key()}";
+            barrel.Collision.SolidType = SolidType_t.SOLID_VPHYSICS;
+            barrel.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags = (uint)(barrel.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags & ~(1 << 2));
+
+            using (var keys = new CEntityKeyValues())
+            {
+                keys.SetString("model", SkillsInfo.GetValue<string>(skillName, "propModel"));
+                barrel.DispatchSpawn(keys);
+            }
+
+            Server.NextFrame(() =>
+            {
+                if (barrel == null || !barrel.IsValid) return;
+                barrel.Teleport(pos, rotation, null);
+            });
+        }
+
+        public static void OnEntitySpawned(CEntityInstance entity)
+        {
+            if (entity.DesignerName != "hegrenade_projectile") return;
+
+            var heProjectile = entity.As<CBaseCSGrenadeProjectile>();
+            if (heProjectile == null || !heProjectile.IsValid || heProjectile.AbsRotation == null) return;
+
+            int lastTick = Server.TickCount;
+
+            Server.NextFrame(() =>
+            {
+                if (heProjectile == null || !heProjectile.IsValid) return;
+                if (!(NearlyEquals(angle.X, heProjectile.AbsRotation.X) && NearlyEquals(angle.Y, heProjectile.AbsRotation.Y) && NearlyEquals(angle.Z, heProjectile.AbsRotation.Z)))
+                    return;
+
+                heProjectile.TicksAtZeroVelocity = 100;
+                heProjectile.Damage = SkillsInfo.GetValue<int>(skillName, "explosionDamage");
+                heProjectile.DmgRadius = SkillsInfo.GetValue<float>(skillName, "explosionRadius");
+                heProjectile.DetonateTime = 0;
+
+                if (nades.TryRemove(lastTick, out var source))
+                    heProjectile.Entity!.Name = $"barrel_team_{source.Team}_{source.Owner}_{heProjectile.Index}";
+            });
+        }
+
+        public static void OnTakeDamage(CBaseEntity damagedEntity, CTakeDamageInfo damageInfo)
+        {
+            if (SkillsInfo.GetValue<bool>(skillName, "disableOnFreezeTime") && SkillUtils.IsFreezeTime()) return;
+
+            if (damagedEntity == null || damagedEntity.Entity == null || damageInfo == null) return;
+
+            if (HandleBarrelHit(damagedEntity)) return;
+            HandleNadeDamage(damagedEntity, damageInfo);
+        }
+
+        private static bool HandleBarrelHit(CEntityInstance damagedEntity)
+        {
+            if (string.IsNullOrEmpty(damagedEntity.Entity!.Name)) return false;
+            if (!damagedEntity.Entity.Name.StartsWith("Barrel_")) return false;
+
+            var barrel = damagedEntity.As<CDynamicProp>();
+            if (barrel == null || !barrel.IsValid) return true;
+            if (!consumedBarrels.TryAdd(barrel.Index, 0)) return true;
+
+            var nameParts = damagedEntity.Entity.Name.Split('_');
+            if (nameParts.Length < 4) return true;
+            if (!int.TryParse(nameParts[2], out int teamNum)) return true;
+            if (!uint.TryParse(nameParts[3], out uint ownerIndex)) return true;
+
+            if (barrel.AbsOrigin == null) return true;
+
+            float x = barrel.AbsOrigin.X;
+            float y = barrel.AbsOrigin.Y;
+            float z = barrel.AbsOrigin.Z + 32;
+
+            EntityManager.DestroyEntity(barrel.Index, 0f);
+
+            jRandomSkills.Instance.AddTickTimer(4, () =>
+            {
+                SkillUtils.CreateHEGrenadeProjectile(new Vector(x, y, z), angle, new Vector(0, 0, -10), teamNum);
+                nades.AddOrUpdate(Server.TickCount, ((byte)teamNum, ownerIndex), (_, _) => ((byte)teamNum, ownerIndex));
+            });
+
+            return true;
+        }
+
+        private static void HandleNadeDamage(CEntityInstance damagedEntity, CTakeDamageInfo damageInfo)
+        {
+            var nade = damageInfo.Attacker?.Value;
+            if (nade == null || !nade.IsValid) return;
+            if (nade.DesignerName != "hegrenade_projectile") return;
+            string? nadeName = nade.Entity?.Name;
+            if (string.IsNullOrEmpty(nadeName) || !nadeName.StartsWith("barrel_team_")) return;
+
+            var parts = nadeName.Split('_');
+            if (parts.Length < 4) return;
+            if (!int.TryParse(parts[2], out int nadeTeam)) return;
+            if (!uint.TryParse(parts[3], out uint ownerIndex)) return;
+
+            CCSPlayerPawn victimPawn = new(damagedEntity.Handle);
+            if (victimPawn.DesignerName != "player" || victimPawn.Controller?.Value == null) return;
+
+            var victim = victimPawn.Controller.Value.As<CCSPlayerController>();
+            if (victim == null || !victim.IsValid || victim.Key() == ownerIndex) return;
+
+            var owner = PlayerManager.GetController(ownerIndex);
+            if (owner != null && !owner.IsValid) owner = null;
+
+            if (victimPawn.TeamNum == nadeTeam)
+            {
+                if (!SkillsInfo.GetValue<bool>(skillName, "friendlyFire"))
+                {
+                    damageInfo.Damage = 0;
+                    return;
+                }
+
+                damageInfo.Damage *= SkillUtils.GetTeamDamageMultiplier(skillName);
+            }
+
+            if (owner != null && SkillUtils.IsPredictedLethal(damageInfo, victimPawn))
+                SkillUtils.RegisterKillCredit(victim.Key(), owner.Key(), KillfeedIcons.Explosion);
+        }
+
+        private static bool NearlyEquals(float a, float b, float epsilon = 0.001f) => Math.Abs(a - b) < epsilon;
+
+        public class PlayerSkillInfo
+        {
+            public ulong SteamID { get; set; }
+            public bool CanUse { get; set; }
+            public DateTime Cooldown { get; set; }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#c0392b", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = true, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = 2, Rarity rarity = Rarity.Common, float cooldown = 20f, float explosionRadius = 600f, int explosionDamage = 50, string propModel = "models/props/de_train/hr_t/barrel_a/barrel_a.vmdl", float dmgReductionForTeamates = 0.5f, bool friendlyFire = true) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float Cooldown { get; set; } = cooldown;
+            public float ExplosionRadius { get; set; } = explosionRadius;
+            public int ExplosionDamage { get; set; } = explosionDamage;
+            public string PropModel { get; set; } = propModel;
+            public float DmgReductionForTeamates { get; set; } = dmgReductionForTeamates;
+        public bool FriendlyFire { get; set; } = friendlyFire;
+        }
+    }
+}

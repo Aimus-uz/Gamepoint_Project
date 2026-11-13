@@ -1,0 +1,178 @@
+using System.Collections.Concurrent;
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using static src.jRandomSkills;
+
+namespace src.player.skills
+{
+    public class RandomWeapon : ISkill
+    {
+        private const Skills skillName = Skills.RandomWeapon;
+        private static readonly ConcurrentDictionary<uint, PlayerSkillInfo> SkillPlayerInfo = new();
+        private static readonly object setLock = new();
+
+        private static HashSet<string> pistols => WeaponPool.Pistols;
+        private static HashSet<string> rifles => WeaponPool.Rifles;
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void NewRound()
+        {
+            lock (setLock)
+                SkillPlayerInfo.Clear();
+        }
+
+        public static void OnTick()
+        {
+            if (!SkillUtils.IsHudFrame()) return;
+            var players = PlayerManager.GetTickPlayers().ToArray();
+            foreach (var player in players)
+            {
+                var playerInfo = PlayerManager.GetPlayer(player);
+                if (playerInfo?.Skill == skillName && SkillPlayerInfo.TryGetValue(player.Key(), out var skillInfo))
+                    UpdateHUD(player, skillInfo);
+            }
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            SkillPlayerInfo.TryAdd(player.Key(), new PlayerSkillInfo
+            {
+                SteamID = player.Key(),
+                CanUse = true,
+                Cooldown = DateTime.MinValue,
+            });
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            SkillPlayerInfo.TryRemove(player.Key(), out _);
+            SkillUtils.ResetPrintHTML(player);
+        }
+
+        private static void UpdateHUD(CCSPlayerController player, PlayerSkillInfo skillInfo)
+        {
+            float cooldown = 0;
+            if (skillInfo != null)
+            {
+                float time = (int)Math.Ceiling((skillInfo.Cooldown.AddSeconds(SkillsInfo.GetValue<float>(skillName, "cooldown")) - DateTime.Now).TotalSeconds);
+                cooldown = Math.Max(time, 0);
+
+                if (cooldown == 0 && skillInfo.CanUse == false)
+                    skillInfo.CanUse = true;
+            }
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+
+            playerInfo.PrintHTML = cooldown == 0
+                ? null
+                : $"{player.GetTranslation("hud_info", $"<font color='#FF0000'>{cooldown}</font>")}";
+        }
+
+        public static void UseSkill(CCSPlayerController player)
+        {
+            var pawn = player.PlayerPawn.Value;
+            if (pawn?.CBodyComponent == null) return;
+
+            if (!SkillPlayerInfo.TryGetValue(player.Key(), out var skillInfo)) return;
+            if (!player.IsValid || player.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+
+            if (!skillInfo.CanUse)
+            {
+                return;
+            }
+
+            skillInfo.CanUse = false;
+            skillInfo.Cooldown = DateTime.Now;
+            RemoveAndGiveWeapon(player);
+        }
+
+        private static bool RollPistol(bool pistolAvailable, bool rifleAvailable)
+        {
+            if (!rifleAvailable) return true;
+            if (!pistolAvailable) return false;
+
+            float pistolChance = Math.Max(SkillsInfo.GetValue<float>(skillName, "pistolChance"), 0);
+            float rifleChance = Math.Max(SkillsInfo.GetValue<float>(skillName, "rifleChance"), 0);
+            float total = pistolChance + rifleChance;
+
+            if (total <= 0) return Instance.Random.Next(2) == 0;
+            return Instance.Random.NextDouble() * total < pistolChance;
+        }
+
+        private static void RemoveAndGiveWeapon(CCSPlayerController player)
+        {
+            var pawn = player.PlayerPawn.Value;
+            if (pawn == null || !pawn.IsValid || pawn.WeaponServices == null) return;
+
+            var playerWeapons = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var item in pawn.WeaponServices.MyWeapons)
+                if (item != null && item.IsValid && item.Value != null && item.Value.IsValid && !string.IsNullOrEmpty(item.Value.DesignerName))
+                    playerWeapons.Add(item.Value.DesignerName);
+
+            if (playerWeapons.Count == 0)
+                return;
+
+            var availablePistols = pistols.Where(w => !playerWeapons.Contains(w)).ToArray();
+            var availableRifles = rifles.Where(w => !playerWeapons.Contains(w)).ToArray();
+            if (availablePistols.Length == 0 && availableRifles.Length == 0)
+                return;
+
+            bool isPistol = RollPistol(availablePistols.Length > 0, availableRifles.Length > 0);
+            var available = isPistol ? availablePistols : availableRifles;
+
+            string newWeapon = available[Instance.Random.Next(available.Length)];
+
+            string? weaponToRemove = null;
+            foreach (var item in pawn.WeaponServices.MyWeapons)
+            {
+                if (item == null || !item.IsValid || item.Value == null || !item.Value.IsValid) continue;
+                var name = item.Value.DesignerName;
+                if (string.IsNullOrEmpty(name)) continue;
+                if ((isPistol && pistols.Contains(name)) || (!isPistol && rifles.Contains(name)))
+                {
+                    weaponToRemove = name;
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(weaponToRemove))
+            {
+                foreach (var item in pawn.WeaponServices.MyWeapons)
+                {
+                    if (item == null || !item.IsValid || item.Value == null || !item.Value.IsValid) continue;
+                    if (item.Value.DesignerName == weaponToRemove)
+                        SkillUtils.SafeKillEntity<CBasePlayerWeapon>((uint)item.Value.Index);
+                }
+            }
+
+            uint playerIndex = player.Key();
+            Instance.AddTimer(.1f, () =>
+            {
+                var pl = PlayerManager.GetController(playerIndex);
+                if (pl == null || !pl.IsValid) return;
+                pl.GiveNamedItem(newWeapon);
+            }, CounterStrikeSharp.API.Modules.Timers.TimerFlags.STOP_ON_MAPCHANGE);
+        }
+
+        public class PlayerSkillInfo
+        {
+            public ulong SteamID { get; set; }
+            public bool CanUse { get; set; }
+            public DateTime Cooldown { get; set; }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#e0873a", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, float cooldown = 15f, float pistolChance = 60f, float rifleChance = 40f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float Cooldown { get; set; } = cooldown;
+            public float PistolChance { get; set; } = pistolChance;
+            public float RifleChance { get; set; } = rifleChance;
+        }
+    }
+}

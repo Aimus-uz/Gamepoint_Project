@@ -1,0 +1,57 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using static src.jRandomSkills;
+
+namespace src.player.skills
+{
+    public class QuickShot : ISkill
+    {
+        private const Skills skillName = Skills.QuickShot;
+        private static readonly List<CCSPlayerController> holderBuffer = [];
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void OnTick()
+        {
+            PlayerManager.FillSkillHolders(skillName, holderBuffer);
+            if (holderBuffer.Count == 0) return;
+
+            foreach (var player in holderBuffer)
+            {
+                if (!Instance.IsPlayerValid(player)) continue;
+
+                var pawn = player.PlayerPawn.Value;
+                if (pawn == null || !pawn.IsValid) continue;
+
+                var weaponServices = pawn.WeaponServices;
+                if (weaponServices == null || weaponServices.ActiveWeapon == null || !weaponServices.ActiveWeapon.IsValid) continue;
+
+                var weapon = weaponServices.ActiveWeapon.Value;
+                if (weapon == null || !weapon.IsValid || pawn.CameraServices == null) continue;
+
+                if (pawn.AimPunchServices != null)
+                {
+                    pawn.AimPunchServices.PredictableBaseTick = 0;
+                    pawn.AimPunchServices.PredictableBaseTickInterpAmount = 0;
+                    pawn.AimPunchServices.UnpredictableBaseTick = 0;
+                }
+
+                pawn.CameraServices.CsViewPunchAngleTick = 0;
+                pawn.CameraServices.CsViewPunchAngleTickRatio = 0f;
+
+                Schema.SetSchemaValue<Int32>(weapon.Handle, "CBasePlayerWeapon", "m_nNextPrimaryAttackTick", Server.TickCount);
+                Schema.SetSchemaValue<Int32>(weapon.Handle, "CBasePlayerWeapon", "m_nNextSecondaryAttackTick", Server.TickCount);
+            }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#8a42f5", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+        }
+    }
+}

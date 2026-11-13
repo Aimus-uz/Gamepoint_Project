@@ -1,0 +1,111 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.UserMessages;
+using CounterStrikeSharp.API.Modules.Utils;
+using static src.jRandomSkills;
+using System.Collections.Concurrent;
+using src.utils;
+
+namespace src.player.skills
+{
+    public class Flash : ISkill
+    {
+        private const Skills skillName = Skills.Flash;
+        public static readonly ConcurrentDictionary<uint, int> jumpedPlayers = [];
+        private static readonly List<CCSPlayerController> holderBuffer = [];
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"), false);
+        }
+
+        public static void NewRound()
+        {
+            jumpedPlayers.Clear();
+        }
+
+        public static void PlayerMakeSound(UserMessage um)
+        {
+            var soundevent = um.ReadUInt("soundevent_hash");
+            var userIndex = um.ReadUInt("source_entity_index");
+
+            if (userIndex == 0) return;
+            if (!Instance.footstepSoundEvents.Contains(soundevent)) return;
+
+            var player = PlayerManager.GetTickPlayers().FirstOrDefault(p => p.Pawn?.Value != null && p.Pawn.Value.IsValid && p.Pawn.Value.Index == userIndex);
+            if (!Instance.IsPlayerValid(player)) return;
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo?.Skill != skillName) return;
+
+            if (player!.Buttons.HasFlag(PlayerButtons.Speed) || player.Buttons.HasFlag(PlayerButtons.Duck))
+                um.Recipients.Clear();
+        }
+
+        public static void PlayerJump(CCSPlayerController? jumpPlayer)
+        {
+            var player = PlayerManager.GetPlayerEvent(jumpPlayer);
+            if (player == null || !player.IsValid) return;
+            if (!jumpedPlayers.TryGetValue(player.Key(), out _)) return;
+            jumpedPlayers.AddOrUpdate(player.Key(), Server.TickCount + 20, (k, v) => Server.TickCount + 20);
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            var playerPawn = player.PlayerPawn.Value;
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerPawn == null || playerInfo == null) return;
+
+            float newSpeed = (float)Instance.Random.NextDouble() * (SkillsInfo.GetValue<float>(skillName, "ChanceTo") - SkillsInfo.GetValue<float>(skillName, "ChanceFrom")) + SkillsInfo.GetValue<float>(skillName, "ChanceFrom");
+            newSpeed = (float)Math.Round(newSpeed, 2);
+            playerInfo.SkillChance = newSpeed;
+
+            jumpedPlayers.TryAdd(player.Key(), 0);
+            playerPawn.VelocityModifier = newSpeed;
+            SkillUtils.PrintToChat(player, $"{ChatColors.DarkRed}{player.GetSkillName(skillName)}{ChatColors.Lime}: {player.GetSkillDescription(skillName, newSpeed)}",
+                border: !PlayerManager.GetTickPlayers().Any(p => p.Team == player.Team && p != player) ? "tb" : "t");
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            var playerPawn = player.PlayerPawn.Value;
+            if (playerPawn == null) return;
+            playerPawn.VelocityModifier = 1;
+            jumpedPlayers.TryRemove(player.Key(), out _);
+        }
+
+        public static void OnTick()
+        {
+            PlayerManager.FillSkillHolders(skillName, holderBuffer);
+            if (holderBuffer.Count == 0) return;
+
+            foreach (var player in holderBuffer)
+            {
+                if (!Instance.IsPlayerValid(player)) continue;
+
+                var playerInfo = PlayerManager.GetPlayer(player);
+                var playerPawn = player.PlayerPawn?.Value;
+                if (playerPawn == null || playerPawn.VelocityModifier == 0) continue;
+
+                var buttons = player.Buttons;
+                float newVelocity = Math.Max((float)(playerInfo?.SkillChance ?? 1), 1);
+                if (buttons.HasFlag(PlayerButtons.Moveleft) || buttons.HasFlag(PlayerButtons.Moveright) || buttons.HasFlag(PlayerButtons.Forward) || buttons.HasFlag(PlayerButtons.Back))
+                    playerPawn.VelocityModifier = newVelocity;
+
+                if (jumpedPlayers.TryGetValue(player.Key(), out var time) && time > Server.TickCount)
+                    continue;
+
+                if (playerPawn.MoveType == MoveType_t.MOVETYPE_NOCLIP) continue;
+
+                if (!((PlayerFlags)player.Flags).HasFlag(PlayerFlags.FL_ONGROUND))
+                    playerPawn.AbsVelocity.Z = Math.Min(playerPawn.AbsVelocity.Z, 10);
+            }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#A31912", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, float chanceFrom = 1.2f, float chanceTo = 3.0f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float ChanceFrom { get; set; } = chanceFrom;
+            public float ChanceTo { get; set; } = chanceTo;
+        }
+    }
+}

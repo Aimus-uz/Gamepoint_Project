@@ -1,0 +1,128 @@
+﻿using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using CounterStrikeSharp.API.Modules.Utils;
+using static src.jRandomSkills;
+using System.Collections.Concurrent;
+using src.utils;
+
+namespace src.player.skills
+{
+    public class SecondLife : ISkill
+    {
+        private const Skills skillName = Skills.SecondLife;
+        private static readonly ConcurrentDictionary<nint, int> usedThisRound = [];
+        private static readonly object setLock = new();
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void NewRound()
+        {
+            usedThisRound.Clear();
+        }
+
+        // Must intercept pre-damage: player_hurt fires after the death is committed, so a
+        // lethal hit (esp. fall damage) can't be undone there. Cancelling the blow here keeps the respawn clean.
+        public static void OnTakeDamage(CBaseEntity damagedEntity, CTakeDamageInfo damageInfo)
+        {
+            if (damagedEntity == null || !damagedEntity.IsValid || damageInfo == null) return;
+
+            var victimPawn = damagedEntity.As<CCSPlayerPawn>();
+            if (victimPawn == null || !victimPawn.IsValid || victimPawn.DesignerName != "player") return;
+
+            var victimController = victimPawn.Controller.Value;
+            if (victimController == null || !victimController.IsValid) return;
+
+            var victim = victimController.As<CCSPlayerController>();
+            if (victim == null || !victim.IsValid || !victim.PawnIsAlive) return;
+
+            var victimInfo = PlayerManager.GetPlayer(PlayerManager.GetPlayerEvent(victim) ?? victim);
+            if (victimInfo == null || victimInfo.Skill != skillName) return;
+
+            if (SkillUtils.IsFriendlyFireBlocked(damageInfo, victimPawn)) return;
+
+            if (!SkillUtils.IsPredictedLethal(damageInfo, victimPawn)) return;
+
+            if (usedThisRound.TryGetValue(victim.Handle, out int savedTick))
+            {
+                if (savedTick == Server.TickCount)
+                    damageInfo.Damage = 0;
+                return;
+            }
+
+            if (TryConsumeRevive(victim, victimPawn))
+                damageInfo.Damage = 0;
+        }
+
+        public static bool TryConsumeRevive(CCSPlayerController? victim, CCSPlayerPawn? victimPawn)
+        {
+            if (victim == null || !victim.IsValid) return false;
+            if (victimPawn == null || !victimPawn.IsValid) return false;
+
+            if (SkillUtils.IsFreezeTime()) return false;
+
+            lock (setLock)
+            {
+                if (usedThisRound.ContainsKey(victim.Handle)) return false;
+
+                var spawnpoint = SkillUtils.GetSpawnPointVector(victim);
+                if (spawnpoint == null) return false; // no clean respawn point -> let the normal death happen
+
+                usedThisRound.TryAdd(victim.Handle, Server.TickCount);
+
+                SetHealth(victimPawn, StartHealth(), StartHealth());
+
+                Server.NextFrame(() =>
+                {
+                    if (victim == null || !victim.IsValid) return;
+                    if (SkillUtils.IsFreezeTime()) return;
+                    var pawn = victim.PlayerPawn.Value;
+                    if (pawn == null || !pawn.IsValid) return;
+
+                    pawn.Teleport(spawnpoint, null, new Vector(0, 0, 0));
+                });
+
+                return true;
+            }
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            var pawn = player.PlayerPawn.Value;
+            if (pawn == null || !pawn.IsValid || pawn.LifeState != (byte)LifeState_t.LIFE_ALIVE || pawn.Health <= 0) return;
+            SetHealth(pawn, StartHealth(), StartHealth());
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            usedThisRound.TryRemove(player.Handle, out _);
+            var pawn = player.PlayerPawn.Value;
+            if (pawn == null || !pawn.IsValid) return;
+
+            pawn.MaxHealth = 100;
+            NetStateFast.Changed(pawn, "CBaseEntity", "m_iMaxHealth");
+
+            if (pawn.LifeState != (byte)LifeState_t.LIFE_ALIVE || pawn.Health <= 0) return;
+            SetHealth(pawn, Math.Clamp(pawn.Health + Math.Max(0, 100 - StartHealth()), 1, 100), 100);
+        }
+
+        private static int StartHealth() => Math.Max(1, SkillsInfo.GetValue<int>(skillName, "startHealth"));
+
+        private static void SetHealth(CCSPlayerPawn pawn, int health, int maxHealth)
+        {
+            pawn.MaxHealth = maxHealth;
+            NetStateFast.Changed(pawn, "CBaseEntity", "m_iMaxHealth");
+
+            pawn.Health = health;
+            NetStateFast.Changed(pawn, "CBaseEntity", "m_iHealth");
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#d41c1c", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, int startHealth = 50) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public int StartHealth { get; set; } = startHealth;
+        }
+    }
+}

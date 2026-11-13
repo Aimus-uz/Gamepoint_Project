@@ -1,0 +1,479 @@
+﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using static src.jRandomSkills;
+
+namespace src.utils
+{
+    public static class Config
+    {
+        private static readonly string configsFolder = Path.Combine(Instance.ModuleDirectory, "configs");
+        private static readonly string configPath = Path.Combine(configsFolder, "config.json");
+        private static readonly object fileLock = new();
+
+        private static DebugCategory debugFlags;
+
+        private static SettingsModel config = LoadConfig();
+        public static SettingsModel LoadedConfig => config;
+
+        public static DebugCategory DebugFlags => debugFlags;
+        public static bool DebugEnabled(DebugCategory category) => (debugFlags & category) != 0;
+
+        public static SettingsModel LoadConfig()
+        {
+            lock (fileLock)
+            {
+                var newConfig = new SettingsModel();
+
+                Instance.Logger.LogInformation("config path: {Path} (exists={Exists})", configPath, File.Exists(configPath));
+
+                if (!File.Exists(configPath))
+                {
+                    Instance.Logger.LogError("config.json NOT FOUND at the path above; a fresh file with defaults is being written.");
+                    SaveConfig(newConfig);
+                    debugFlags = DebugCategories.Parse(newConfig.DebugMode);
+                    return config = newConfig;
+                }
+
+                try
+                {
+                    string json;
+                    using (var fs = new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (var sr = new StreamReader(fs))
+                        json = sr.ReadToEnd();
+                    newConfig = JsonConvert.DeserializeObject<SettingsModel>(json) ?? new SettingsModel();
+
+                    if (HasMissingKeys(json) || IsLegacyDebugMode(json))
+                        SaveConfig(newConfig);
+                }
+                catch (Exception ex)
+                {
+                    Instance.Logger.LogError("Error when loading the config file: {Message}", ex.Message);
+
+                    if (config != null)
+                    {
+                        Instance.Logger.LogError("config.json was not applied; the previously loaded settings are kept.");
+                        return config;
+                    }
+                }
+
+                if (newConfig.DisplayAlwaysDescription)
+                    newConfig.SkillDescriptionDuration = 9999;
+
+                debugFlags = DebugCategories.Parse(newConfig.DebugMode);
+                ApplyRarityTables(newConfig);
+                return config = newConfig;
+            }
+        }
+
+        private static void ApplyRarityTables(SettingsModel model)
+        {
+            RarityManager.SetRarityPercentages(ToRarityTable(model.SkillsChance));
+            RarityManager.SetVipRarityPercentages(ToRarityTable(model.VIPSkillsChance));
+        }
+
+        private static Dictionary<Rarity, float> ToRarityTable(Dictionary<string, float>? source)
+        {
+            var table = new Dictionary<Rarity, float>();
+            if (source == null) return table;
+
+            foreach (var kv in source)
+                if (Enum.TryParse<Rarity>(kv.Key, true, out var rarity))
+                    table[rarity] = kv.Value;
+
+            return table;
+        }
+
+        private static bool HasMissingKeys(string json)
+        {
+            try
+            {
+                var current = Newtonsoft.Json.Linq.JObject.Parse(json);
+                var expected = Newtonsoft.Json.Linq.JObject.FromObject(new SettingsModel());
+
+                return HasMissingKeys(current, expected);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool HasMissingKeys(Newtonsoft.Json.Linq.JObject current, Newtonsoft.Json.Linq.JObject expected)
+        {
+            foreach (var property in expected.Properties())
+            {
+                var currentValue = current[property.Name];
+                if (currentValue == null) return true;
+
+                if (property.Value is Newtonsoft.Json.Linq.JObject expectedChild
+                    && currentValue is Newtonsoft.Json.Linq.JObject currentChild
+                    && HasMissingKeys(currentChild, expectedChild)) return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsLegacyDebugMode(string json)
+        {
+            try
+            {
+                var token = Newtonsoft.Json.Linq.JObject.Parse(json)[nameof(SettingsModel.DebugMode)];
+                return token != null && token.Type == Newtonsoft.Json.Linq.JTokenType.Boolean;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static void SaveConfig(SettingsModel config)
+        {
+            lock (fileLock)
+            {
+                try
+                {
+                    Directory.CreateDirectory(configsFolder);
+                    string json = JsonConvert.SerializeObject(config, Formatting.Indented);
+
+                    string tempPath = $"{configPath}.temp";
+                    File.WriteAllText(tempPath, json);
+
+                    File.Move(tempPath, configPath, overwrite: true);
+                }
+                catch (Exception ex)
+                {
+                    Instance.Logger.LogError("Error when saving the config file: {Message}", ex.Message);
+                }
+            }
+        }
+
+        public class SettingsModel
+        {
+            public string ConfigName { get; set; }
+            public int GameMode { get; set; }
+            public bool YourSkillChatInfo { get; set; }
+            public bool KillerSkillChatInfo { get; set; }
+            public bool TeamMateSkillChatInfo { get; set; }
+            public bool SummaryAfterTheRound { get; set; }
+            public bool EnableBotSkills { get; set; }
+            public bool EnableBotKickDebug { get; set; }
+            public bool EnableFullForceUpdate { get; set; }
+            [JsonConverter(typeof(DebugModeConverter))]
+            public int DebugMode { get; set; }
+            public bool PerfMode { get; set; }
+            public string? AlternativeSkillButton { get; set; }
+            public float SkillTimeBeforeStart { get; set; }
+            public float SkillHudDuration { get; set; }
+            public float SkillDescriptionDuration { get; set; }
+            public bool DisplayAlwaysDescription { get; set; }
+            public bool DisableSpectateHUD { get; set; }
+            public bool HideHudForOtherPlugins { get; set; }
+            public bool EnableFlashingHtmlHudFix { get; set; }
+            public bool TraceRayBeam { get; set; }
+            public string DisableHUDOnDeathPermission { get; set; }
+            public bool DisableSkillsOnRoundEnd { get; set; }
+            public string VIPFlag { get; set; }
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+            public Dictionary<string, float> SkillsChance { get; set; }
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+            public Dictionary<string, float> VIPSkillsChance { get; set; }
+            public int? CurseSkillPerPlayer { get; set; }
+            public bool ShowDecoyRing { get; set; }
+            public WeaponPools Weapons { get; set; }
+            public LanguageSystem LanguageSystem { get; set; }
+            public HtmlHudCustomisation HtmlHudCustomisation { get; set; }
+            public PanoramaHudSettings PanoramaHud { get; set; }
+            public ChatMessage ChatMessage { get; set; }
+            public NormalCommands NormalCommands { get; set; }
+            public VotingCommands VotingCommands { get; set; }
+
+            public SettingsModel()
+            {
+                ConfigName = "Default";
+                GameMode = (int)GameModes.NoRepeat;
+                YourSkillChatInfo = true;
+                KillerSkillChatInfo = true;
+                TeamMateSkillChatInfo = true;
+                SummaryAfterTheRound = true;
+                EnableBotSkills = true;
+                EnableBotKickDebug = false;
+                EnableFullForceUpdate = false;
+                DebugMode = 0;
+                PerfMode = false;
+                AlternativeSkillButton = null;
+                SkillTimeBeforeStart = 7;
+                SkillHudDuration = -1;
+                SkillDescriptionDuration = 7;
+                DisplayAlwaysDescription = false;
+                EnableFlashingHtmlHudFix = false;
+                TraceRayBeam = false;
+                DisableSpectateHUD = false;
+                HideHudForOtherPlugins = true;
+                DisableHUDOnDeathPermission = "@jRandomSkills/death";
+                DisableSkillsOnRoundEnd = false;
+                VIPFlag = "@css/vip";
+
+                SkillsChance = new Dictionary<string, float>
+                {
+                    ["Common"] = 0.70f,
+                    ["Uncommon"] = 0.14f,
+                    ["Rare"] = 0.10f,
+                    ["Epic"] = 0.05f,
+                    ["Legendary"] = 0.01f,
+                };
+
+                VIPSkillsChance = new Dictionary<string, float>
+                {
+                    ["Common"] = 0.55f,
+                    ["Uncommon"] = 0.23f,
+                    ["Rare"] = 0.14f,
+                    ["Epic"] = 0.07f,
+                    ["Legendary"] = 0.01f,
+                };
+                CurseSkillPerPlayer = null;
+                ShowDecoyRing = true;
+
+                Weapons = new WeaponPools
+                {
+                    Rifle =
+                    [
+                        "weapon_ak47", "weapon_m4a1", "weapon_m4a1_silencer",
+                        "weapon_famas", "weapon_galilar", "weapon_aug", "weapon_sg556",
+                        "weapon_mp9", "weapon_mac10", "weapon_bizon", "weapon_mp7",
+                        "weapon_ump45", "weapon_p90", "weapon_mp5sd", "weapon_ssg08",
+                        "weapon_awp", "weapon_scar20", "weapon_g3sg1", "weapon_nova",
+                        "weapon_xm1014", "weapon_mag7", "weapon_sawedoff", "weapon_m249",
+                        "weapon_negev"
+                    ],
+                    Pistol =
+                    [
+                        "weapon_deagle", "weapon_revolver", "weapon_glock", "weapon_usp_silencer",
+                        "weapon_cz75a", "weapon_fiveseven", "weapon_p250", "weapon_tec9",
+                        "weapon_elite", "weapon_hkp2000"
+                    ],
+                    Grenade =
+                    [
+                        "weapon_hegrenade", "weapon_flashbang", "weapon_smokegrenade",
+                        "weapon_molotov", "weapon_incgrenade", "weapon_decoy"
+                    ],
+                };
+
+                LanguageSystem = new LanguageSystem
+                {
+                    DefaultLangCode = "en",
+                    DisableGeoLite = false,
+                    LanguageInfos =
+                    [
+                        new LanguageInfo("ZH, CN, TW, HK, MO, SG", "zh"),
+                        new LanguageInfo("PT-BR, PT, BR, AO, CV, GW, MZ, ST, TL", "pt-br"),
+                        new LanguageInfo("FR, MC, HT", "fr"),
+                        new LanguageInfo("DE, AT, CH, LI, LU, BE", "de"),
+                        new LanguageInfo("RU, KZ, BY, KG, TJ, UZ, TM, AM, AZ, GE, MD", "ru"),
+                        new LanguageInfo("TR", "tr"),
+                        new LanguageInfo("CZ", "cs"),
+                        new LanguageInfo("PL", "pl"),
+                        new LanguageInfo("EN, GB, US", "en")
+                    ]
+                };
+
+                HtmlHudCustomisation = new HtmlHudCustomisation
+                {
+                    // GAMEPOINT design system colours (fallback HTML HUD); HeaderLineSize also turns on the
+                    // "Your skill" / "Drawing a skill" badge of the Panorama HUD
+                    HeaderLineColor = "#AEB4BF",
+                    HeaderLineSize = "sm",
+                    SkillLineSize = "l",
+                    InfoLineColor = "#F6F7F9",
+                    InfoLineSize = "sm",
+                    SkillDescriptionLineColor = "#AEB4BF",
+                    SkillDescriptionLineSize = "sm",
+                    WSADMenuSelectInfoLineColor = "#858D9B",
+                    WSADMenuSelectInfoLineSize = "sm",
+                    WSADMenuItemLineColor = "#CED2D9",
+                    WSADMenuItemHoverLineColor = "#009BED",
+                    WSADMenuItemLineSize = "sm",
+                    WSADMenuVisibleItems = 3,
+                    WSADMenuControllsLineSize = "sm",
+                    WSADMenuControllsLineColor1 = "#37AFEF",
+                    WSADMenuControllsLineColor2 = "#646C79",
+                    WSADMenuControllsLineColor3 = "#22C55E",
+                };
+
+                PanoramaHud = new PanoramaHudSettings();
+
+                ChatMessage = new ChatMessage
+                {
+                    MaxWidth = 1280,
+                    LineSymbol = '―',
+                    LineColor = "\x04",
+                    LineShow = true,
+                    InfoPlayerNameColor = "\x02",
+                    InfoSkillColor = "\x06",
+                    InfoMessageShow = true,
+                    TagFormat = "\x02◢◆◤ {TAG} ◥◆◣",
+                };
+
+                NormalCommands = new NormalCommands
+                {
+                    SetSkillCommand = new NormalCommand("ustawskill, ustaw_skill, setskill, set_skill, definirhabilidade, configurarhabilidade, 设置技能, 配置技能", "@jRandomSkills/admin"),
+                    SkillsListCommand = new NormalCommand("supermoc, skille, listamocy, supermoce, skills, listaHabilidades, habilidades, 技能列表, 超能力列表", "@jRandomSkills/admin"),
+                    UseSkillCommand = new NormalCommand("t, useSkill, usarHabilidade, 技能使用, 使用技能", "@jRandomSkills/admin"),
+                    HealCommand = new NormalCommand("heal, ulecz, curar, tratar, 治疗, 治愈", "@jRandomSkills/admin"),
+                    HealthCommand = new NormalCommand("sethealth, set_health, health", "@jRandomSkills/admin"),
+                    PlantedBomb = new NormalCommand("plantedbomb, planted_bomb, bomb", "@jRandomSkills/admin"),
+                    BotPlace = new NormalCommand("botplace, bot_place", "@jRandomSkills/admin"),
+                    ConsoleCommand = new NormalCommand("console, sv, 控制台, 服务器", "@jRandomSkills/owner"),
+                    HudCommand = new NormalCommand("hud, hood", ""),
+                    SetStaticSkillCommand = new NormalCommand("ustawstatycznyskill, ustaw_statyczny_skill, setstaticskill, set_static_skill", "@jRandomSkills/admin"),
+                    ChangeLanguageCommand = new NormalCommand("lang, language, changelang, change_lang, jezyk, język", ""),
+                    ReloadCommand = new NormalCommand("reload, refresh", "@jRandomSkills/admin"),
+                    NextCommand = new NormalCommand("next_skill", "@jRandomSkills/admin"),
+                    CheckEntityCommand = new NormalCommand("ent, entity, checkentity, check_entity, sprawdzencje, checkent, check_ent, 检查实体", "@jRandomSkills/owner"),
+                };
+
+                VotingCommands = new VotingCommands
+                {
+                    StartGameCommand = new StartGameCommand(true, "start, go, começar, iniciar, 开始, 启动", "@jRandomSkills/admin", "mp_freezetime 15; mp_forcecamera 0; mp_overtime_enable 1; sv_cheats 0", "mp_freezetime 0; mp_forcecamera 0; mp_overtime_enable 1; sv_cheats 1", 15, 60, 15, 500, 2),
+                    ChangeMapCommand = new VotingCommand(true, "map, mapa, changemap, zmienmape, mudarMapa, trocarMapa, 更换地图, 更改地图", "@jRandomSkills/admin", 25, 90, 15, 500, 2),
+                    SwapCommand = new VotingCommand(true, "swap, zmiana, trocar, 交换, 切换", "@jRandomSkills/admin", 15, 90, 15, 20, 2),
+                    ShuffleCommand = new VotingCommand(true, "shuffle, embaralhar, 随机排序, 洗牌", "@jRandomSkills/admin", 15, 90, 15, 20, 2),
+                    PauseCommand = new VotingCommand(true, "pause, unpause, pausar, despausar, 暂停, 恢复", "@jRandomSkills/admin", 15, 60, 15, 2, 2),
+                    SetScoreCommand = new VotingCommand(true, "setscore, wynik, definirPontuacao, configurarPontos, 设置分数, 调整分数", "@jRandomSkills/owner", 15, 90, 15, 90, 2),
+                };
+            }
+        }
+
+        public class WeaponPools
+        {
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+            public required List<string> Rifle { get; set; }
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+            public required List<string> Pistol { get; set; }
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+            public required List<string> Grenade { get; set; }
+        }
+
+        public class ChatMessage
+        {
+            public required float MaxWidth { get; set; }
+            public required char LineSymbol { get; set; }
+            public required string LineColor { get; set; }
+            public required bool LineShow { get; set; }
+            public required string InfoPlayerNameColor { get; set; }
+            public required string InfoSkillColor { get; set; }
+            public required bool InfoMessageShow { get; set; }
+            public required string TagFormat { get; set; }
+        }
+
+        public class HtmlHudCustomisation
+        {
+            public required string HeaderLineColor { get; set; }
+            public required string HeaderLineSize { get; set; }
+            public required string SkillLineSize { get; set; }
+            public required string InfoLineColor { get; set; }
+            public required string InfoLineSize { get; set; }
+            public required string SkillDescriptionLineColor { get; set; }
+            public required string SkillDescriptionLineSize { get; set; }
+            public required string WSADMenuSelectInfoLineColor { get; set; }
+            public required string WSADMenuSelectInfoLineSize { get; set; }
+            public required string WSADMenuItemLineColor { get; set; }
+            public required string WSADMenuItemHoverLineColor { get; set; }
+            public required string WSADMenuItemLineSize { get; set; }
+            public required int WSADMenuVisibleItems { get; set; }
+            public required string WSADMenuControllsLineSize { get; set; }
+            public required string WSADMenuControllsLineColor1 { get; set; }
+            public required string WSADMenuControllsLineColor2 { get; set; }
+            public required string WSADMenuControllsLineColor3 { get; set; }
+        }
+
+        public class PanoramaHudSettings
+        {
+            // GAMEPOINT: on by default, using the GAMEPOINT HUD from our addon
+            public bool Enabled { get; set; } = true;
+            public string Layout { get; set; } = "panorama/layout/custom_game/gamepoint/jrs_hud.xml";
+            public string Font { get; set; } = "stratum";
+            public int FontSize { get; set; } = 100;
+        }
+
+        public class LanguageSystem
+        {
+            public required string DefaultLangCode { get; set; }
+            public required bool DisableGeoLite { get; set; }
+            public required LanguageInfo[] LanguageInfos { get; set; }
+        }
+
+        public class LanguageInfo(string isoCodes, string fileName)
+        {
+            public string IsoCodes { get; set; } = isoCodes;
+            public string FileName { get; set; } = fileName;
+        }
+
+        public class NormalCommand(string alias, string permissions)
+        {
+            public string Alias { get; set; } = alias;
+            public string Permissions { get; set; } = permissions;
+        }
+
+        public class NormalCommands
+        {
+            public required NormalCommand SetSkillCommand { get; set; }
+            public required NormalCommand SkillsListCommand { get; set; }
+            public required NormalCommand UseSkillCommand { get; set; }
+            public required NormalCommand HealCommand { get; set; }
+            public required NormalCommand HealthCommand { get; set; }
+            public required NormalCommand PlantedBomb { get; set; }
+            public required NormalCommand BotPlace { get; set; }
+            public required NormalCommand ConsoleCommand { get; set; }
+            public required NormalCommand HudCommand { get; set; }
+            public required NormalCommand SetStaticSkillCommand { get; set; }
+            public required NormalCommand ChangeLanguageCommand { get; set; }
+            public required NormalCommand ReloadCommand { get; set; }
+            public required NormalCommand NextCommand { get; set; }
+            public required NormalCommand CheckEntityCommand { get; set; }
+        }
+
+        public class VotingCommand(bool enableVoting, string alias, string permissions, float timeToVote, float percentagesToSuccess, float timeToNextVoting, float timeToNextSameVoting, int minimumPlayersToStartVoting) : NormalCommand(alias, permissions)
+        {
+            public bool EnableVoting { get; set; } = enableVoting;
+            public float TimeToVote { get; set; } = timeToVote;
+            public float PercentagesToSuccess { get; set; } = percentagesToSuccess;
+            public float TimeToNextVoting { get; set; } = timeToNextVoting;
+            public float TimeToNextSameVoting { get; set; } = timeToNextSameVoting;
+            public int MinimumPlayersToStartVoting { get; set; } = minimumPlayersToStartVoting;
+        }
+
+        public class StartGameCommand(bool enableVoting, string alias, string permissions, string startParams, string svStartParams, float timeToVote, float percentagesToSuccess, float timeToNextVoting, float timeToNextSameVoting, int minimumPlayersToStartVoting)
+        {
+            public bool EnableVoting { get; set; } = enableVoting;
+            public string Alias { get; set; } = alias;
+            public string Permissions { get; set; } = permissions;
+            public string StartParams { get; set; } = startParams;
+            public string SVStartParams { get; set; } = svStartParams;
+            public float TimeToVote { get; set; } = timeToVote;
+            public float PercentagesToSuccess { get; set; } = percentagesToSuccess;
+            public float TimeToNextVoting { get; set; } = timeToNextVoting;
+            public float TimeToNextSameVoting { get; set; } = timeToNextSameVoting;
+            public int MinimumPlayersToStartVoting { get; set; } = minimumPlayersToStartVoting;
+        }
+
+        public class VotingCommands
+        {
+            public required StartGameCommand StartGameCommand { get; set; }
+            public required VotingCommand ChangeMapCommand { get; set; }
+            public required VotingCommand SwapCommand { get; set; }
+            public required VotingCommand ShuffleCommand { get; set; }
+            public required VotingCommand PauseCommand { get; set; }
+            public required VotingCommand SetScoreCommand { get; set; }
+        }
+
+        public enum GameModes
+        {
+            Normal = 0,
+            TeamSkills = 1,
+            SameSkills = 2,
+            NoRepeat = 3,
+            FullRandom = 4,
+            Debug = 5
+        }
+    }
+}

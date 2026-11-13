@@ -1,0 +1,37 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using static src.jRandomSkills;
+
+namespace src.player.skills
+{
+    public class OnlyHead : ISkill
+    {
+        private const Skills skillName = Skills.OnlyHead;
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static bool PlayerHurtPre(EventPlayerHurt @event)
+        {
+            var attacker = PlayerManager.GetPlayerEvent(@event.Attacker);
+            var victim = PlayerManager.GetPlayerEvent(@event.Userid);
+
+            if (!Instance.IsPlayerValid(victim)) return false;
+            if (PlayerManager.GetPlayer(victim)?.Skill != skillName) return false;
+
+            bool worldDamage = !Instance.IsPlayerValid(attacker) || attacker!.Key() == victim.Key();
+            if (!worldDamage && (HitGroup_t)@event.Hitgroup == HitGroup_t.HITGROUP_HEAD) return false;
+
+            SkillUtils.RestoreHealth(victim);
+            return true;
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#3c47de", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+        }
+    }
+}

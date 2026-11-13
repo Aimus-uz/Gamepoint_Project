@@ -1,0 +1,168 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using System.Collections.Concurrent;
+
+namespace src.player.skills
+{
+    public class AreaReaper : ISkill
+    {
+        private const Skills skillName = Skills.AreaReaper;
+        private static readonly string[] bombsiteA = ["A", "a"];
+        private static readonly string[] bombsiteB = ["B", "b"];
+        private static readonly ConcurrentDictionary<uint, uint> playersToTarget = [];
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void NewRound()
+        {
+            foreach (var player in PlayerManager.GetTickPlayers())
+            {
+                if (player != null && player.IsValid)
+                    SkillUtils.CloseMenu(player);
+            }
+
+            foreach (uint siteIndex in playersToTarget.Values.Distinct())
+            {
+                var site = Utilities.GetEntityFromIndex<CBombTarget>((int)siteIndex);
+                if (site == null || !site.IsValid) continue;
+
+                site.BombPlantedHere = false;
+                NetStateFast.Changed(site, "CBombTarget", "m_bBombPlantedHere");
+            }
+
+            playersToTarget.Clear();
+        }
+
+        public static void TypeSkill(CCSPlayerController player, string[] commands)
+        {
+            if (player == null || !player.IsValid || commands == null || commands.Length == 0) return;
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo?.Skill != skillName) return;
+
+            var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+            if (playerEvent == null || !playerEvent.IsValid) return;
+
+            if (playerInfo.SkillUsed)
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}{playerEvent.GetTranslation("areareaper_used_info")}");
+                return;
+            }
+
+            int site = bombsiteA.Contains(commands[0]) ? 0 : bombsiteB.Contains(commands[0]) ? 1 : -1;
+            if (site == -1)
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}{playerEvent.GetTranslation("areareaper_incorrect_site")}");
+                return;
+            }
+
+            var bombTargets = Utilities.FindAllEntitiesByDesignerName<CBombTarget>("func_bomb_target").ToArray();
+            if (bombTargets.Length == 2)
+            {
+                var targetSite = bombTargets[site];
+                if (targetSite != null && targetSite.IsValid)
+                {
+                    targetSite.BombPlantedHere = true;
+                    NetStateFast.Changed(targetSite, "CBombTarget", "m_bBombPlantedHere");
+                    playerInfo.SkillUsed = true;
+
+                    playersToTarget[player.Key()] = targetSite.Index;
+
+                    string siteLetter = site == 0 ? "A" : "B";
+                    foreach (var ct in PlayerManager.GetTickPlayers().Where(p => p != null && p.IsValid && !p.IsHLTV && p.Team == CsTeam.CounterTerrorist))
+                        ct.PrintToChat($" {ChatColors.Green}" + ct.GetTranslation("areareaper_teammates_info", siteLetter));
+                }
+            }
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            if (player == null || !player.IsValid) return;
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+
+            var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+            if (playerEvent == null || !playerEvent.IsValid) return;
+
+            playerInfo.SkillUsed = false;
+            SkillUtils.CreateMenu(player, [(playerEvent.GetTranslation("bombsite_a"), "a")], (playerEvent.GetTranslation("bombsite_b"), "b", true));
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            if (player != null && player.IsValid)
+                ReleaseSite(player, false);
+
+            SkillUtils.CloseMenu(player);
+        }
+
+        public static void PlayerDeath(EventPlayerDeath @event)
+        {
+            var player = PlayerManager.GetPlayerEvent(@event.Userid);
+            if (player == null || !player.IsValid) return;
+
+            ReleaseSite(player, true);
+        }
+
+        private static void ReleaseSite(CCSPlayerController player, bool notify)
+        {
+            if (!playersToTarget.TryRemove(player.Key(), out uint siteIndex)) return;
+
+            foreach (var kvp in playersToTarget)
+                if (kvp.Value == siteIndex)
+                    return;
+
+            var site = Utilities.GetEntityFromIndex<CBombTarget>((int)siteIndex);
+            if (site == null || !site.IsValid) return;
+
+            site.BombPlantedHere = false;
+            NetStateFast.Changed(site, "CBombTarget", "m_bBombPlantedHere");
+
+            if (!notify) return;
+
+            string siteLetter = SiteLetter(site);
+            foreach (var teammate in PlayerManager.GetTickPlayers())
+                if (teammate != null && teammate.IsValid && !teammate.IsBot && teammate.Team == player.Team)
+                    teammate.PrintToChat($" {ChatColors.Red}" + teammate.GetTranslation("areareaper_owner_dead_info", siteLetter));
+        }
+
+        private static string SiteLetter(CBombTarget site)
+        {
+            var bombTargets = Utilities.FindAllEntitiesByDesignerName<CBombTarget>("func_bomb_target").ToArray();
+            return bombTargets.Length == 2 && bombTargets[1].Index == site.Index ? "B" : "A";
+        }
+
+        public static void OnTick()
+        {
+            if (Server.TickCount % 16 != 0) return;
+
+            foreach (var player in PlayerManager.GetTickPlayers())
+            {
+                var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+                if (playerEvent == null || !playerEvent.IsValid || player == null || !player.IsValid || player.Team != CsTeam.Terrorist || player.PlayerPawn?.Value?.Health <= 0) continue;
+
+                var playerInfo = PlayerManager.GetPlayer(player);
+                if (playerInfo?.Skill == null) continue;
+
+                var pawn = player.PlayerPawn!.Value;
+                if (pawn == null || !pawn.IsValid || pawn.WeaponServices == null) continue;
+
+                var activeWeapon = pawn.WeaponServices.ActiveWeapon.Value;
+                if (activeWeapon == null || !activeWeapon.IsValid || activeWeapon.DesignerName != "weapon_c4") continue;
+
+                if (!pawn.InBombZone && pawn.InBombZoneTrigger)
+                    playerEvent.PrintToCenterAlert(playerEvent.GetTranslation("areareaper_bombsite_disabled"));
+            }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#edf5b5", CsTeam onlyTeam = CsTeam.CounterTerrorist, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = 1, Rarity rarity = Rarity.Common) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+        }
+    }
+}

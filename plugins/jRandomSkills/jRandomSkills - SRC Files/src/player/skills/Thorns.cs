@@ -1,0 +1,64 @@
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using jRandomSkills.src.utils;
+using src.utils;
+
+namespace src.player.skills
+{
+    public class Thorns : ISkill
+    {
+        private const Skills skillName = Skills.Thorns;
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            SkillUtils.SetSkillHud(player, "thorns_hud", (int)MathF.Round(SkillsInfo.GetValue<float>(skillName, "healthTakenScale") * 100f), SkillsInfo.GetValue<int>(skillName, "maxTakenDamagePerShot"));
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            SkillUtils.ResetPrintHTML(player);
+        }
+
+        public static void PlayerHurt(EventPlayerHurt @event)
+        {
+            var victim = @event.Userid;
+            if (victim == null || !victim.IsValid) return;
+
+            var attacker = @event.Attacker;
+            if (attacker == null || !attacker.IsValid) return;
+
+            var attackerEvent = PlayerManager.GetPlayerEvent(attacker);
+            var victimEvent = PlayerManager.GetPlayerEvent(victim);
+
+            if (attackerEvent == null || !attackerEvent.IsValid) return;
+            if (victimEvent == null || !victimEvent.IsValid) return;
+
+            var attackerPawn = attackerEvent.PlayerPawn.Value;
+            if (attackerPawn == null || !attackerPawn.IsValid || attackerPawn.Health == 0) return;
+
+            if (attackerEvent.Key() == victimEvent.Key()) return;
+
+            var victimInfo = PlayerManager.GetPlayer(victimEvent);
+            if (victimInfo?.Skill == skillName)
+            {
+                int damage = (int)(@event.DmgHealth * SkillsInfo.GetValue<float>(skillName, "healthTakenScale"));
+                damage = Math.Min(damage, SkillsInfo.GetValue<int>(skillName, "maxTakenDamagePerShot"));
+
+                SkillUtils.TakeHealth(attackerEvent.PlayerPawn.Value, damage, victimEvent, KillfeedIcons.Armor);
+                SkillUtils.EmitSoundToPlayer(attackerEvent, "Player.DamageBody.Victim", SkillsInfo.GetValue<float>(skillName, "soundVolume"));
+            }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#962631", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, float healthTakenScale = .3f, int maxTakenDamagePerShot = 37, float soundVolume = .35f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float SoundVolume { get; set; } = soundVolume;
+            public float HealthTakenScale { get; set; } = healthTakenScale;
+            public int MaxTakenDamagePerShot { get; set; } = maxTakenDamagePerShot;
+        }
+    }
+}

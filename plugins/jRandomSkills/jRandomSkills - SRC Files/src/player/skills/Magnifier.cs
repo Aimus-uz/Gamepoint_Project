@@ -1,0 +1,205 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using System.Collections.Concurrent;
+
+namespace src.player.skills
+{
+    public class Magnifier : ISkill
+    {
+        private const Skills skillName = Skills.Magnifier;
+        private static readonly ConcurrentDictionary<uint, byte> playersWithFov = [];
+        private static readonly ConcurrentDictionary<uint, uint> playersToTarget = [];
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void PlayerDisconnect(uint playerIndex)
+        {
+            playersWithFov.TryRemove(playerIndex, out _);
+            playersToTarget.TryRemove(playerIndex, out _);
+            Event.playersCustomFOV.TryRemove(playerIndex, out _);
+
+            foreach (var kvp in playersToTarget)
+                if (kvp.Value == playerIndex)
+                    playersToTarget.TryRemove(kvp.Key, out _);
+        }
+
+        public static void NewRound()
+        {
+            foreach (var playerIndex in playersWithFov.Keys)
+            {
+                var player = PlayerManager.GetController(playerIndex);
+                if (player == null || !player.IsValid) continue;
+                DisableSkill(player);
+            }
+
+            playersWithFov.Clear();
+            playersToTarget.Clear();
+
+            foreach (var player in PlayerManager.GetTickPlayers())
+                SkillUtils.CloseMenu(player);
+        }
+
+        public static void OnTick()
+        {
+            if (Server.TickCount % 32 != 0) return;
+            foreach (var player in PlayerManager.GetTickPlayers())
+            {
+                var playerInfo = PlayerManager.GetPlayer(player);
+
+                if (playerInfo == null || playerInfo.Skill != skillName) continue;
+                if (!SkillUtils.HasMenu(player)) continue;
+
+                var enemies = PlayerManager.GetTickPlayers().Where(p => p != null && p.IsValid && p.PawnIsAlive && p.Team != player.Team && p.Team != CsTeam.Spectator && p.Team != CsTeam.None).ToArray();
+
+                ConcurrentBag<(string, string)> menuItems = new(enemies.Select(e => (e.PlayerName, e.Key().ToString())));
+                SkillUtils.UpdateMenu(player, menuItems);
+            }
+        }
+
+        public static void TypeSkill(CCSPlayerController player, string[] commands)
+        {
+            if (player == null || !player.IsValid || player.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo?.Skill != skillName) return;
+
+            var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+            if (playerEvent == null || !playerEvent.IsValid) return;
+
+            if (playerInfo.SkillUsed)
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}{playerEvent.GetTranslation("areareaper_used_info")}");
+                return;
+            }
+
+            string enemyId = commands[0];
+
+            if (!uint.TryParse(enemyId, out uint enemyIndex))
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}" + playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index"));
+                return;
+            }
+
+            var enemy = PlayerManager.GetController(enemyIndex);
+
+            if (enemy == null)
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}" + playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index"));
+                return;
+            }
+
+            uint magnifierFov = SkillsInfo.GetValue<uint>(skillName, "customFOV");
+            playersWithFov.TryAdd(enemy.Key(), 0);
+
+            uint enemyFOV = enemy.DesiredFOV;
+            if (enemyFOV == 0)
+                Event.playersCustomFOV.TryRemove(enemy.Key(), out _);
+            else if (enemyFOV != magnifierFov)
+                Event.playersCustomFOV.AddOrUpdate(enemy.Key(), enemy.DesiredFOV, (k, v) => enemy.DesiredFOV);
+
+            playersToTarget[player.Key()] = enemy.Key();
+
+            var enemyEvent = PlayerManager.GetPlayerFromEvent(enemy);
+            if (enemyEvent == null || !enemyEvent.IsValid) return;
+
+            enemyEvent.DesiredFOV = magnifierFov;
+            NetStateFast.Changed(enemyEvent, "CBasePlayerController", "m_iDesiredFOV");
+            playerInfo.SkillUsed = true;
+
+            playerEvent.PrintToChat($" {ChatColors.Green}" + playerEvent.GetTranslation("magnifier_player_info", enemy.PlayerName));
+            enemyEvent.PrintToChat($" {ChatColors.Red}" + enemyEvent.GetTranslation("magnifier_enemy_info"));
+        }
+
+        public static void BotTakeover(EventBotTakeover @event)
+        {
+            var bot = PlayerManager.GetPlayerEvent(@event.Botid);
+            if (bot == null || !bot.IsValid) return;
+
+            var player = @event.Userid;
+            if (player == null || !player.IsValid) return;
+
+            if (!playersWithFov.ContainsKey(bot.Key())) return;
+
+            uint magnifierFov = SkillsInfo.GetValue<uint>(skillName, "customFOV");
+            uint playerFOV = player.DesiredFOV;
+
+            if (playerFOV != 0 && playerFOV != magnifierFov)
+                Event.playersCustomFOV.AddOrUpdate(player.Key(), player.DesiredFOV, (k, v) => player.DesiredFOV);
+
+            player.DesiredFOV = magnifierFov;
+            NetStateFast.Changed(player, "CBasePlayerController", "m_iDesiredFOV");
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+            playerInfo.SkillUsed = false;
+
+            var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+            if (playerEvent == null || !playerEvent.IsValid) return;
+
+            var enemies = SkillUtils.GetSelectableEnemies(player, true);
+            if (enemies.Length > 0)
+            {
+                ConcurrentBag<(string, string)> menuItems = new(enemies.Select(e => (e.PlayerName, e.Key().ToString())));
+                SkillUtils.CreateMenu(player, menuItems);
+            }
+            else
+                playerEvent.PrintToChat($" {ChatColors.Red}{playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index")}");
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            if (player == null || !player.IsValid) return;
+
+            if (playersToTarget.TryRemove(player.Key(), out uint targetIndex))
+            {
+                var target = PlayerManager.GetPlayerFromEvent(PlayerManager.GetController(targetIndex));
+                if (target != null && target.IsValid)
+                {
+                    if (target.DesiredFOV == SkillsInfo.GetValue<uint>(skillName, "customFOV"))
+                    {
+                        target.DesiredFOV = Event.playersCustomFOV.TryGetValue(target.Key(), out uint fov) ? fov : 0;
+                        NetStateFast.Changed(target, "CBasePlayerController", "m_iDesiredFOV");
+                    }
+
+                    if (target.PawnIsAlive)
+                        target.PrintToChat($" {ChatColors.Green}" + target.GetTranslation("magnifier_disable_info"));
+                }
+                playersWithFov.TryRemove(targetIndex, out _);
+            }
+
+            if (player.DesiredFOV != 0)
+            {
+                player.DesiredFOV = Event.playersCustomFOV.TryGetValue(player.Key(), out uint fov) ? fov : 0;
+                NetStateFast.Changed(player, "CBasePlayerController", "m_iDesiredFOV");
+            }
+
+            SkillUtils.ResetPrintHTML(player);
+        }
+
+        public static void PlayerDeath(EventPlayerDeath @event)
+        {
+            var player = @event.Userid;
+            if (player == null || !player.IsValid) return;
+
+            if (player.DesiredFOV == SkillsInfo.GetValue<uint>(skillName, "customFOV"))
+            {
+                player.DesiredFOV = Event.playersCustomFOV.TryGetValue(player.Key(), out uint fov) ? fov : 0;
+                NetStateFast.Changed(player, "CBasePlayerController", "m_iDesiredFOV");
+            }
+
+            SkillUtils.ResetPrintHTML(player);
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#9ba882", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, uint customFOV = 50) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public uint CustomFOV { get; set; } = customFOV;
+        }
+    }
+}

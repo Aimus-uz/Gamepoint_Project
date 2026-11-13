@@ -1,0 +1,163 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using static src.jRandomSkills;
+using System.Collections.Concurrent;
+using src.utils;
+
+namespace src.player.skills
+{
+    public class PsychicDefusing : ISkill
+    {
+        private const Skills skillName = Skills.PsychicDefusing;
+        private static readonly ConcurrentDictionary<uint, PlayerSkillInfo> SkillPlayerInfo = [];
+        private static Vector? bombLocation = null;
+        private static bool roundEnded;
+        private static readonly float tickRate = 64f;
+        private static readonly object setLock = new();
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void NewRound()
+        {
+            lock (setLock)
+            {
+                SkillPlayerInfo.Clear();
+                bombLocation = null;
+                roundEnded = false;
+            }
+        }
+
+        public static void RoundEnd()
+        {
+            lock (setLock)
+            {
+                roundEnded = true;
+                bombLocation = null;
+                SkillPlayerInfo.Clear();
+            }
+        }
+
+        public static void PlayerDeath(EventPlayerDeath @event)
+        {
+            var player = PlayerManager.GetPlayerEvent(@event.Userid);
+            if (player == null || !player.IsValid) return;
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo?.Skill == skillName)
+                SkillPlayerInfo.TryRemove(player.Key(), out _);
+        }
+
+        public static void BombPlanted(EventBombPlanted _)
+        {
+            ResolveBombLocation();
+        }
+
+        private static void ResolveBombLocation()
+        {
+            var plantedBomb = Utilities.FindAllEntitiesByDesignerName<CPlantedC4>("planted_c4").FirstOrDefault();
+            if (plantedBomb == null || !plantedBomb.IsValid || !plantedBomb.BombTicking || plantedBomb.BombDefused) return;
+
+            var origin = plantedBomb.AbsOrigin;
+            if (origin == null) return;
+
+            bombLocation = new Vector(origin.X, origin.Y, origin.Z);
+        }
+
+        public static void OnTick()
+        {
+            var bomb = bombLocation;
+            if (roundEnded || bomb == null) return;
+            foreach (var skillInfo in SkillPlayerInfo)
+            {
+                var playerIndex = skillInfo.Key;
+                var info = skillInfo.Value;
+
+                var player = PlayerManager.GetController(playerIndex);
+                if (player == null || !player.IsValid || player.PlayerPawn == null) continue;
+
+                var pawn = player.PlayerPawn.Value;
+                if (pawn == null || !pawn.IsValid) continue;
+
+                if (pawn.AbsOrigin == null || SkillUtils.GetDistance(pawn.AbsOrigin, bomb) > SkillsInfo.GetValue<float>(skillName, "maxDefusingRange"))
+                {
+                    info.Defusing = false;
+                    info.DefusingTime = SkillsInfo.GetValue<float>(skillName, "defusingTime");
+                    SkillUtils.ResetPrintHTML(player);
+                    continue;
+                }
+
+                if (!info.Defusing)
+                    pawn.EmitSound("c4.disarmstart", volume: SkillsInfo.GetValue<float>(skillName, "soundVolume"));
+                info.Defusing = true;
+                info.DefusingTime -= (1f / tickRate);
+
+                if (info.DefusingTime <= 0)
+                {
+                    var plantedBomb = Utilities.FindAllEntitiesByDesignerName<CPlantedC4>("planted_c4").FirstOrDefault();
+                    if (plantedBomb != null && plantedBomb.IsValid && plantedBomb.BombTicking && !plantedBomb.BombDefused)
+                    {
+                        plantedBomb.AddEntityIOEvent("Kill", plantedBomb, delay: 0.1f);
+                        SkillUtils.TerminateRound(CsTeam.CounterTerrorist, player);
+                    }
+                    SkillUtils.ResetPrintHTML(player);
+                    SkillPlayerInfo.Clear();
+                    bombLocation = null;
+                }
+
+                UpdateHUD(player, info);
+            }
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            if (player == null || !player.IsValid) return;
+
+            SkillPlayerInfo.TryAdd(player.Key(), new PlayerSkillInfo
+            {
+                SteamID = player.Key(),
+                Defusing = false,
+                DefusingTime = SkillsInfo.GetValue<float>(skillName, "defusingTime"),
+            });
+
+            if (!roundEnded && bombLocation == null)
+                ResolveBombLocation();
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            SkillUtils.ResetPrintHTML(player);
+            SkillPlayerInfo.TryRemove(player.Key(), out _);
+        }
+
+        private static void UpdateHUD(CCSPlayerController player, PlayerSkillInfo skillInfo)
+        {
+            if (!skillInfo.Defusing) return;
+            int cooldown = (int)Math.Ceiling(skillInfo.DefusingTime);
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+
+            if (cooldown == 0)
+                playerInfo.PrintHTML = null;
+            else
+                playerInfo.PrintHTML = $"{player.GetTranslation("psychicdefusing_hud_info", $"<font color='#00d5ff'>{cooldown}</font>")}";
+        }
+        public class PlayerSkillInfo
+        {
+            public ulong SteamID { get; set; }
+            public bool Defusing { get; set; }
+            public float DefusingTime { get; set; }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#507529", CsTeam onlyTeam = CsTeam.CounterTerrorist, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, float maxDefusingRange = 80f, float defusingTime = 10f, float soundVolume = 1f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float SoundVolume { get; set; } = soundVolume;
+            public float MaxDefusingRange { get; set; } = maxDefusingRange;
+            public float DefusingTime { get; set; } = defusingTime;
+        }
+    }
+}

@@ -1,0 +1,243 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using System.Collections.Concurrent;
+using System.Drawing;
+
+namespace src.player.skills
+{
+    public class HealingChicken : ISkill
+    {
+        private const Skills skillName = Skills.HealingChicken;
+
+        private class ChickenState
+        {
+            public CChicken? Chicken { get; set; }
+            public bool HasLast { get; set; }
+            public float LastX { get; set; }
+            public float LastY { get; set; }
+            public float LastZ { get; set; }
+            public int TickCounter { get; set; }
+        }
+
+        private static readonly ConcurrentDictionary<uint, List<ChickenState>> activeChickens = new();
+        private static readonly ConcurrentDictionary<uint, (uint ownerIndex, int health)> chickenOwners = new();
+        private const string chickenParticle = "particles/critters/chicken/chicken_goop.vpcf";
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+            jRandomSkills.Instance.AddToManifest(chickenParticle);
+        }
+
+        public static void NewRound()
+        {
+            activeChickens.Clear();
+            chickenOwners.Clear();
+        }
+
+        public static void OnTakeDamage(CBaseEntity damagedEntity, CTakeDamageInfo damageInfo)
+        {
+            if (damagedEntity == null || damageInfo == null) return;
+
+            if (!chickenOwners.TryGetValue(damagedEntity.Index, out var ownerData)) return;
+            uint ownerIndex = ownerData.ownerIndex;
+            int health = ownerData.health;
+
+            var owner = PlayerManager.GetController(ownerIndex);
+            if (owner == null || !owner.IsValid) return;
+
+            var attackerEnt = damageInfo.Attacker?.Value;
+            if (attackerEnt == null || !attackerEnt.IsValid) return;
+
+            var attackerPawn = new CCSPlayerPawn(attackerEnt.Handle);
+            if (!attackerPawn.IsValid || attackerPawn.DesignerName != "player") return;
+
+            var ownerPawn = owner.PlayerPawn.Value;
+            if (ownerPawn == null || !ownerPawn.IsValid) return;
+
+            if (attackerPawn.Index != ownerPawn.Index && attackerPawn.TeamNum == owner.TeamNum)
+            {
+                damageInfo.Damage = 0;
+                return;
+            }
+
+            int newHealth = Math.Max(0, health - (int)damageInfo.Damage);
+            chickenOwners[damagedEntity.Index] = (ownerIndex, newHealth);
+
+            if (newHealth > 0)
+                CreateHitParticles(damagedEntity.Index);
+        }
+
+        private static void CreateHitParticles(uint chickenIndex)
+        {
+            var chicken = Utilities.GetEntityFromIndex<CChicken>((int)chickenIndex);
+            if (chicken == null || !chicken.IsValid || chicken.AbsOrigin == null) return;
+
+            var particle = EntityManager.CreateTrackedParticleSystem(chicken.Index, chickenParticle, autoDestroySeconds: 3f);
+            if (particle == null) return;
+
+            Vector pos = new(chicken.AbsOrigin.X, chicken.AbsOrigin.Y, chicken.AbsOrigin.Z + 10);
+            particle.Teleport(pos);
+            particle.AcceptInput("Start");
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            SpawnChicken(player);
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            if (activeChickens.TryRemove(player.Key(), out var chickens))
+                foreach (var state in chickens)
+                    if (state.Chicken != null && state.Chicken.IsValid)
+                    {
+                        chickenOwners.TryRemove(state.Chicken.Index, out _);
+                        state.Chicken.Remove();
+                    }
+        }
+
+        private static void SpawnChicken(CCSPlayerController player)
+        {
+            if (player == null || !player.IsValid) return;
+
+            var pawn = player.PlayerPawn.Value;
+            if (pawn == null || !pawn.IsValid || pawn.AbsOrigin == null) return;
+
+            int amount = SkillsInfo.GetValue<int>(skillName, "amount");
+            int health = SkillsInfo.GetValue<int>(skillName, "chickenHealth");
+            var list = new List<ChickenState>();
+
+            for (int i = 0; i < amount; i++)
+            {
+                CChicken? chicken = EntityManager.CreateTrackedChicken(player.Key());
+                if (chicken == null || !chicken.IsValid) continue;
+
+                chicken.Render = Color.LightGreen;
+                chicken.MaxHealth = health;
+                chicken.Health = health;
+
+                chickenOwners[chicken.Index] = (player.Key(), health);
+
+                Vector offset = new(
+                    (float)(100 * Math.Cos(2 * Math.PI * i / amount)),
+                    (float)(100 * Math.Sin(2 * Math.PI * i / amount)),
+                    0
+                );
+
+                chicken.Teleport(new Vector(pawn.AbsOrigin.X + offset.X, pawn.AbsOrigin.Y + offset.Y, pawn.AbsOrigin.Z + offset.Z));
+                chicken.Leader.Raw = pawn.Index;
+
+                list.Add(new ChickenState { Chicken = chicken, TickCounter = 0 });
+            }
+
+            activeChickens[player.Key()] = list;
+        }
+
+        public static void OnTick()
+        {
+            if (activeChickens.IsEmpty) return;
+
+            int tickCooldown = SkillsInfo.GetValue<int>(skillName, "tickCooldown");
+            float boostFactor = SkillsInfo.GetValue<float>(skillName, "boostFactor");
+            int healAmount = SkillsInfo.GetValue<int>(skillName, "heal");
+            float healRadius = SkillsInfo.GetValue<float>(skillName, "healRadius");
+            float returnDistance = SkillsInfo.GetValue<float>(skillName, "returnDistance");
+
+            foreach (var (playerKey, chickens) in activeChickens)
+            {
+                var player = PlayerManager.GetController(playerKey);
+                if (player == null) continue;
+
+                var playerInfo = PlayerManager.GetPlayerByKey(playerKey);
+                if (playerInfo?.Skill != skillName) continue;
+
+                var pawn = player.PlayerPawn.Value;
+                if (pawn == null || !pawn.IsValid || pawn.Health <= 0) continue;
+
+                var pawnOrigin = pawn.AbsOrigin;
+                if (pawnOrigin == null) continue;
+
+                float px = pawnOrigin.X, py = pawnOrigin.Y, pz = pawnOrigin.Z;
+                uint pawnRaw = player.Pawn.Raw;
+
+                for (int i = chickens.Count - 1; i >= 0; i--)
+                {
+                    var state = chickens[i];
+                    var chicken = state.Chicken;
+                    var chickenOrigin = chicken != null && chicken.IsValid ? chicken.AbsOrigin : null;
+                    if (chicken == null || chickenOrigin == null)
+                    {
+                        chickens.RemoveAt(i);
+                        continue;
+                    }
+
+                    var leader = chicken.Leader;
+                    if (leader.Raw != pawnRaw)
+                        leader.Raw = pawnRaw;
+
+                    float cx = chickenOrigin.X, cy = chickenOrigin.Y, cz = chickenOrigin.Z;
+
+                    if (state.HasLast)
+                    {
+                        float dx = cx - state.LastX;
+                        float dy = cy - state.LastY;
+                        float dist2D = MathF.Sqrt(dx * dx + dy * dy);
+
+                        if (dist2D > 0.05f && dist2D < 20.0f)
+                        {
+                            cx += dx * boostFactor;
+                            cy += dy * boostFactor;
+                            chicken.Teleport(new Vector(cx, cy, cz), null, null);
+                        }
+                    }
+
+                    state.HasLast = true;
+                    state.LastX = cx;
+                    state.LastY = cy;
+                    state.LastZ = cz;
+
+                    float pdx = px - cx;
+                    float pdy = py - cy;
+                    float pdz = pz - cz;
+                    float distToPlayer = MathF.Sqrt(pdx * pdx + pdy * pdy + pdz * pdz);
+
+                    if (returnDistance > 0f && distToPlayer > returnDistance)
+                    {
+                        double angle = 2 * Math.PI * i / Math.Max(1, chickens.Count);
+                        chicken.Teleport(new Vector(px + 60f * (float)Math.Cos(angle), py + 60f * (float)Math.Sin(angle), pz), null, new Vector(0, 0, 0));
+                        state.HasLast = false;
+                        state.TickCounter = 0;
+                        continue;
+                    }
+
+                    if (distToPlayer <= healRadius)
+                    {
+                        state.TickCounter++;
+                        if (state.TickCounter >= tickCooldown)
+                        {
+                            SkillUtils.AddHealth(pawn, healAmount);
+                            state.TickCounter = 0;
+                        }
+                    }
+                    else
+                        state.TickCounter = 0;
+                }
+            }
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#b5ab8f", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = 1, Rarity rarity = Rarity.Legendary, int amount = 3, int heal = 2, int tickCooldown = 16, float healRadius = 150.0f, int chickenHealth = 50, float boostFactor = 2.5f, float returnDistance = 500f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public int Amount { get; set; } = amount;
+            public int Heal { get; set; } = heal;
+            public int TickCooldown { get; set; } = tickCooldown;
+            public float HealRadius { get; set; } = healRadius;
+            public int ChickenHealth { get; set; } = chickenHealth;
+            public float BoostFactor { get; set; } = boostFactor;
+            public float ReturnDistance { get; set; } = returnDistance;
+        }
+    }
+}

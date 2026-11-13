@@ -1,0 +1,185 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using System.Collections.Concurrent;
+
+namespace src.player.skills
+{
+    public class Glitch : ISkill
+    {
+        private const Skills skillName = Skills.Glitch;
+        private const string ownerTag = "Glitch";
+        private const string spectatorTag = "GlitchSpec";
+        private static readonly ConcurrentDictionary<uint, byte> glitchedPlayers = [];
+        private static readonly ConcurrentDictionary<uint, uint> playersToTarget = [];
+        private static readonly object setLock = new();
+        private static readonly SpectatorMirror spectators = new(
+            (viewer, _) => SkillUtils.SetRadarDisabled(viewer, spectatorTag, true),
+            viewer => SkillUtils.SetRadarDisabled(viewer, spectatorTag, false));
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void PlayerDisconnect(uint playerIndex)
+        {
+            lock (setLock)
+            {
+                glitchedPlayers.TryRemove(playerIndex, out _);
+                playersToTarget.TryRemove(playerIndex, out _);
+
+                foreach (var kvp in playersToTarget)
+                    if (kvp.Value == playerIndex)
+                        playersToTarget.TryRemove(kvp.Key, out _);
+            }
+
+            spectators.Forget(playerIndex);
+        }
+
+        public static void NewRound()
+        {
+            lock (setLock)
+            {
+                foreach (var player in PlayerManager.GetTickPlayers())
+                {
+                    DisableSkill(player);
+                    SkillUtils.CloseMenu(player);
+                }
+
+                glitchedPlayers.Clear();
+                playersToTarget.Clear();
+            }
+
+            spectators.Reset();
+        }
+
+        public static void OnTick()
+        {
+            if (SkillUtils.IsHudFrame())
+                spectators.Update(key => glitchedPlayers.ContainsKey(key));
+
+            if (Server.TickCount % 32 != 0) return;
+            foreach (var player in PlayerManager.GetTickPlayers())
+            {
+                var playerInfo = PlayerManager.GetPlayer(player);
+
+                if (playerInfo == null || playerInfo.Skill != skillName) continue;
+                if (!SkillUtils.HasMenu(player)) continue;
+
+                var enemies = SkillUtils.GetSelectableEnemies(player, true);
+
+                ConcurrentBag<(string, string)> menuItems = new(enemies.Select(e => (e.PlayerName, e.Key().ToString())));
+                SkillUtils.UpdateMenu(player, menuItems);
+            }
+        }
+
+        public static void TypeSkill(CCSPlayerController player, string[] commands)
+        {
+            if (player == null || !player.IsValid || player.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo?.Skill != skillName) return;
+
+            var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+            if (playerEvent == null || !playerEvent.IsValid) return;
+
+            if (playerInfo.SkillUsed)
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}{playerEvent.GetTranslation("areareaper_used_info")}");
+                return;
+            }
+
+            string enemyId = commands[0];
+
+            if (!uint.TryParse(enemyId, out uint enemyIndex))
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}" + playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index"));
+                return;
+            }
+
+            var enemy = PlayerManager.GetController(enemyIndex);
+
+            if (enemy == null)
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}" + playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index"));
+                return;
+            }
+
+            glitchedPlayers.TryAdd(enemy.Key(), 0);
+            playersToTarget[player.Key()] = enemy.Key();
+
+            var enemyEvent = PlayerManager.GetPlayerFromEvent(enemy);
+            if (enemyEvent == null || !enemyEvent.IsValid) return;
+
+            SkillUtils.SetRadarDisabled(enemyEvent, ownerTag, true);
+            playerInfo.SkillUsed = true;
+
+            playerEvent.PrintToChat($" {ChatColors.Green}" + playerEvent.GetTranslation("glitch_player_info", enemy.PlayerName));
+            enemyEvent.PrintToChat($" {ChatColors.Red}" + enemyEvent.GetTranslation("glitch_enemy_info"));
+        }
+
+        public static void BotTakeover(EventBotTakeover @event)
+        {
+            var bot = PlayerManager.GetPlayerEvent(@event.Botid);
+            if (bot == null || !bot.IsValid) return;
+
+            var player = @event.Userid;
+            if (player == null || !player.IsValid) return;
+
+            if (!glitchedPlayers.ContainsKey(bot.Key())) return;
+
+            SkillUtils.SetRadarDisabled(player, ownerTag, true);
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+            playerInfo.SkillUsed = false;
+
+            var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+            if (playerEvent == null || !playerEvent.IsValid) return;
+
+            var enemies = SkillUtils.GetSelectableEnemies(player, true);
+            if (enemies.Length > 0)
+            {
+                ConcurrentBag<(string, string)> menuItems = new(enemies.Select(e => (e.PlayerName, e.Key().ToString())));
+                SkillUtils.CreateMenu(player, menuItems);
+            }
+            else
+                playerEvent.PrintToChat($" {ChatColors.Red}{playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index")}");
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            if (playersToTarget.TryRemove(player.Key(), out uint targetIndex))
+            {
+                var target = PlayerManager.GetPlayerFromEvent(PlayerManager.GetController(targetIndex));
+                if (target != null && target.IsValid)
+                {
+                    SkillUtils.SetRadarDisabled(target, ownerTag, false);
+                    if (target.PawnIsAlive)
+                        target.PrintToChat($" {ChatColors.Green}" + target.GetTranslation("glitch_disable_info"));
+                }
+                glitchedPlayers.TryRemove(targetIndex, out _);
+            }
+
+            SkillUtils.CloseMenu(player);
+        }
+
+        public static void PlayerDeath(EventPlayerDeath @event)
+        {
+            var player = @event.Userid;
+            if (player == null || !player.IsValid) return;
+
+            SkillUtils.SetRadarDisabled(player, ownerTag, false);
+            glitchedPlayers.TryRemove(player.Key(), out _);
+            SkillUtils.CloseMenu(player);
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#f542ef", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+        }
+    }
+}

@@ -1,0 +1,264 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
+using CounterStrikeSharp.API.Modules.Utils;
+using jRandomSkills.src.utils;
+using src.utils;
+using System.Collections.Concurrent;
+using static src.jRandomSkills;
+
+namespace src.player.skills
+{
+    public class CarefulBullets : ISkill
+    {
+        private const Skills skillName = Skills.CarefulBullets;
+        private const string hurtSound = "Player.DamageBody.Victim";
+        private static readonly ConcurrentDictionary<uint, byte> targetPlayers = [];
+        private static readonly ConcurrentDictionary<uint, bool> lastShot = [];
+        private static readonly ConcurrentDictionary<uint, int> hitPlayer = [];
+        private static readonly ConcurrentDictionary<uint, uint> playersToTarget = [];
+        private static readonly ConcurrentDictionary<uint, uint> targetToPlayer = [];
+        private static readonly object setLock = new();
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void NewRound()
+        {
+            lock (setLock)
+            {
+                foreach (var player in PlayerManager.GetTickPlayers())
+                {
+                    DisableSkill(player);
+                    SkillUtils.CloseMenu(player);
+                }
+
+                targetPlayers.Clear();
+                lastShot.Clear();
+                hitPlayer.Clear();
+                playersToTarget.Clear();
+                targetToPlayer.Clear();
+            }
+        }
+
+        public static void OnTick()
+        {
+            if (Server.TickCount % 32 != 0) return;
+            foreach (var player in PlayerManager.GetTickPlayers())
+            {
+                var playerInfo = PlayerManager.GetPlayer(player);
+
+                if (playerInfo == null || playerInfo.Skill != skillName) continue;
+                if (!SkillUtils.HasMenu(player)) continue;
+
+                var enemies = SkillUtils.GetSelectableEnemies(player, true);
+
+                ConcurrentBag<(string, string)> menuItems = [.. enemies.Select(e => (e.PlayerName, e.Key().ToString()))];
+                SkillUtils.UpdateMenu(player, menuItems);
+            }
+        }
+
+        public static void TypeSkill(CCSPlayerController player, string[] commands)
+        {
+            if (player == null || !player.IsValid || player.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo?.Skill != skillName) return;
+
+            var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+            if (playerEvent == null || !playerEvent.IsValid) return;
+
+            if (playerInfo.SkillUsed)
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}{playerEvent.GetTranslation("areareaper_used_info")}");
+                return;
+            }
+
+            string enemyId = commands[0];
+
+            if (!uint.TryParse(enemyId, out uint enemyIndex))
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}" + playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index"));
+                return;
+            }
+
+            var enemy = PlayerManager.GetController(enemyIndex);
+
+            if (enemy == null)
+            {
+                playerEvent.PrintToChat($" {ChatColors.Red}" + playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index"));
+                return;
+            }
+
+            targetPlayers.TryAdd(enemy.Key(), 0);
+            playersToTarget[player.Key()] = enemy.Key();
+            targetToPlayer[enemy.Key()] = player.Key();
+            playerInfo.SkillUsed = true;
+
+            var enemyEvent = PlayerManager.GetPlayerFromEvent(enemy);
+            if (enemyEvent == null || !enemyEvent.IsValid) return;
+
+            playerEvent.PrintToChat($" {ChatColors.Green}" + playerEvent.GetTranslation("carefulbullets_player_info", enemy.PlayerName));
+            enemyEvent.PrintToChat($" {ChatColors.Red}" + enemyEvent.GetTranslation("carefulbullets_enemy_info"));
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo == null) return;
+            playerInfo.SkillUsed = false;
+
+            var playerEvent = PlayerManager.GetPlayerFromEvent(player);
+            if (playerEvent == null || !playerEvent.IsValid) return;
+
+            var enemies = SkillUtils.GetSelectableEnemies(player, true);
+            if (enemies.Length > 0)
+            {
+                ConcurrentBag<(string, string)> menuItems = [.. enemies.Select(e => (e.PlayerName, e.Key().ToString()))];
+                SkillUtils.CreateMenu(player, menuItems);
+            }
+            else
+                playerEvent.PrintToChat($" {ChatColors.Red}{playerEvent.GetTranslation("selectplayerskill_incorrect_enemy_index")}");
+        }
+
+        public static void BulletImpact(EventBulletImpact @event)
+        {
+            var eventPlayer = @event.Userid;
+            if (eventPlayer == null || !eventPlayer.IsValid) return;
+
+            var player = PlayerManager.GetPlayerEvent(@event.Userid);
+            if (player == null || !player.IsValid) return;
+
+            var playerPawn = player.PlayerPawn.Value;
+            if (playerPawn == null || !playerPawn.IsValid) return;
+
+            if (!targetPlayers.ContainsKey(player.Key()) || player.LifeState != (byte)LifeState_t.LIFE_ALIVE)
+                return;
+
+            uint playerIndex = player.Key();
+            int impactTick = Server.TickCount;
+
+            Server.NextFrame(() =>
+            {
+                if (player == null || !player.IsValid) return;
+                if (playerPawn == null || !playerPawn.IsValid) return;
+
+                bool ishitPlayer = hitPlayer.TryGetValue(playerIndex, out int tick) && tick + 1 >= impactTick;
+
+                if (!lastShot.ContainsKey(playerIndex))
+                {
+                    lastShot.TryAdd(playerIndex, ishitPlayer);
+
+                    Instance.AddTickTimer(1, () =>
+                    {
+                        if (lastShot.TryRemove(playerIndex, out bool didHit) && !didHit)
+                        {
+                            SkillUtils.EmitSoundToPlayer(eventPlayer, hurtSound, SkillsInfo.GetValue<float>(skillName, "soundVolume"));
+
+                            SkillUtils.TakeHealth(playerPawn, SkillsInfo.GetValue<int>(skillName, "damageAfterMiss"), GetSkillOwner(playerIndex), KillfeedIcons.Fist);
+                        }
+                        lastShot.TryRemove(playerIndex, out _);
+                    });
+                }
+                else if (ishitPlayer)
+                    lastShot.TryUpdate(playerIndex, true, false);
+            });
+        }
+
+        private static CCSPlayerController? GetSkillOwner(uint targetIndex)
+        {
+            if (!targetToPlayer.TryGetValue(targetIndex, out uint ownerIndex)) return null;
+
+            var owner = PlayerManager.GetController(ownerIndex);
+            return owner != null && owner.IsValid ? owner : null;
+        }
+
+        public static void OnTakeDamage(CBaseEntity damagedEntity, CTakeDamageInfo damageInfo)
+        {
+            if (damagedEntity == null || damagedEntity.Entity == null || damageInfo == null || damageInfo.Attacker == null || damageInfo.Attacker.Value == null)
+                return;
+
+            CCSPlayerPawn attackerPawn = new(damageInfo.Attacker.Value.Handle);
+            CCSPlayerPawn victimPawn = new(damagedEntity.Handle);
+
+            if (attackerPawn.DesignerName != "player" || victimPawn.DesignerName != "player")
+                return;
+
+            if (attackerPawn == null || attackerPawn.Controller?.Value == null || victimPawn == null || victimPawn.Controller?.Value == null)
+                return;
+
+            CCSPlayerController attacker = PlayerManager.GetPlayerEvent(attackerPawn.Controller.Value.As<CCSPlayerController>())!;
+
+            if (attacker == null || !attacker.IsValid) return;
+            if (!targetPlayers.ContainsKey(attacker.Key())) return;
+
+            hitPlayer.AddOrUpdate(attacker.Key(), Server.TickCount, (_, _) => Server.TickCount);
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            targetPlayers.TryRemove(player.Key(), out _);
+            lastShot.TryRemove(player.Key(), out _);
+            hitPlayer.TryRemove(player.Key(), out _);
+            targetToPlayer.TryRemove(player.Key(), out _);
+
+            if (playersToTarget.TryRemove(player.Key(), out uint targetIndex))
+            {
+                targetPlayers.TryRemove(targetIndex, out _);
+                lastShot.TryRemove(targetIndex, out _);
+                hitPlayer.TryRemove(targetIndex, out _);
+                targetToPlayer.TryRemove(targetIndex, out _);
+
+                var target = PlayerManager.GetPlayerFromEvent(PlayerManager.GetController(targetIndex));
+                if (target != null && target.IsValid && target.PawnIsAlive)
+                    target.PrintToChat($" {ChatColors.Green}" + target.GetTranslation("carefulbullets_disable_info"));
+            }
+
+            SkillUtils.CloseMenu(player);
+        }
+
+        public static void PlayerDeath(EventPlayerDeath @event)
+        {
+            var player = @event.Userid;
+            if (player == null || !player.IsValid) return;
+
+            targetPlayers.TryRemove(player.Key(), out _);
+            lastShot.TryRemove(player.Key(), out _);
+            hitPlayer.TryRemove(player.Key(), out _);
+
+            targetToPlayer.TryRemove(player.Key(), out _);
+
+            SkillUtils.CloseMenu(player);
+        }
+
+        public static void PlayerDisconnect(uint playerIndex)
+        {
+            lock (setLock)
+            {
+                Forget(playerIndex);
+
+                if (playersToTarget.TryRemove(playerIndex, out uint targetIndex))
+                    Forget(targetIndex);
+
+                foreach (var kvp in playersToTarget)
+                    if (kvp.Value == playerIndex)
+                        playersToTarget.TryRemove(kvp.Key, out _);
+            }
+        }
+
+        private static void Forget(uint index)
+        {
+            targetPlayers.TryRemove(index, out _);
+            lastShot.TryRemove(index, out _);
+            hitPlayer.TryRemove(index, out _);
+            targetToPlayer.TryRemove(index, out _);
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#db6c35", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, int damageAfterMiss = 5, float soundVolume = .35f) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public float SoundVolume { get; set; } = soundVolume;
+            public int DamageAfterMiss { get; set; } = damageAfterMiss;
+        }
+    }
+}

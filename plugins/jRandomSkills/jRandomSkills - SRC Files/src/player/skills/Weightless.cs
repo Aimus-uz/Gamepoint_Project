@@ -1,0 +1,153 @@
+using CounterStrikeSharp.API;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Entities.Constants;
+using CounterStrikeSharp.API.Modules.Utils;
+using src.utils;
+using System.Collections.Concurrent;
+
+namespace src.player.skills
+{
+    public class Weightless : ISkill
+    {
+        private const Skills skillName = Skills.Weightless;
+        private readonly static ConcurrentDictionary<uint, uint> nades = [];
+        private readonly static ConcurrentDictionary<uint, int> playersWithSkill = [];
+
+        public static void LoadSkill()
+        {
+            SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void PlayerDisconnect(uint playerIndex)
+        {
+            playersWithSkill.TryRemove(playerIndex, out _);
+        }
+
+        public static void NewRound()
+        {
+            nades.Clear();
+        }
+
+        public static void OnTick()
+        {
+            if (Server.TickCount % 10 != 0) return;
+
+            foreach ((var index, var handle) in nades)
+            {
+                var nade = Utilities.GetEntityFromIndex<CBaseCSGrenadeProjectile>((int)index);
+                if (nade == null || !nade.IsValid || nade.EntityHandle.Raw != handle)
+                {
+                    nades.TryRemove(index, out _);
+                    continue;
+                }
+
+                if (nade.Bounces != 0)
+                {
+                    nade.ActualGravityScale = 2;
+
+                    nade.DetonateTime = 0;
+                    NetStateFast.Changed(nade, "CBaseGrenade", "m_flDetonateTime");
+
+                    nades.TryRemove(index, out _);
+                }
+            }
+        }
+
+        public static void OnEntitySpawned(CEntityInstance @event)
+        {
+            var name = @event.DesignerName;
+            if (!name.EndsWith("_projectile")) return;
+
+            var grenade = @event.As<CBaseCSGrenadeProjectile>();
+            if (grenade == null || !grenade.IsValid) return;
+
+            if (grenade.OwnerEntity.Value == null || !grenade.OwnerEntity.Value.IsValid) return;
+            var pawn = grenade.OwnerEntity.Value.As<CCSPlayerPawn>();
+
+            if (pawn.Controller.Value == null || !pawn.Controller.Value.IsValid) return;
+            var player = pawn.Controller.Value.As<CCSPlayerController>();
+
+            var playerInfo = PlayerManager.GetPlayer(PlayerManager.GetPlayerEvent(player) ?? player);
+            if (playerInfo?.Skill != skillName) return;
+
+            Server.NextFrame(() =>
+            {
+                if (grenade == null || !grenade.IsValid) return;
+                grenade.ActualGravityScale = .0001f;
+
+                Vector currentVelocity = new(grenade.AbsVelocity.X, grenade.AbsVelocity.Y, grenade.AbsVelocity.Z);
+                float speed = currentVelocity.Length() * 2;
+
+                Vector forward = SkillUtils.GetForwardVector(pawn.EyeAngles);
+                Vector newVelocity = forward * speed;
+
+                grenade.Teleport(null, null, newVelocity);
+                nades[grenade.Index] = grenade.EntityHandle.Raw;
+            });
+        }
+
+        public static void GrenadeThrown(EventGrenadeThrown @event)
+        {
+            var player = PlayerManager.GetPlayerEvent(@event.Userid);
+            if (player == null || !player.IsValid) return;
+
+            var weapon = @event.Weapon;
+            if (weapon != "hegrenade") return;
+
+            var playerInfo = PlayerManager.GetPlayer(player);
+            if (playerInfo?.Skill != skillName) return;
+
+            if (playersWithSkill.TryGetValue(player.Key(), out int grenadesLeft) && grenadesLeft > 1)
+            {
+                playersWithSkill[player.Key()] = grenadesLeft - 1;
+                SkillUtils.UpdateGrenadeCount(player, CsItem.HEGrenade, grenadesLeft - 1);
+            }
+        }
+
+        public static void WeaponEquip(EventItemEquip @event)
+        {
+            var player = PlayerManager.GetPlayerEvent(@event.Userid);
+            var weapon = @event.Item;
+            if (player == null || !player.IsValid) return;
+
+            if (playersWithSkill.TryGetValue(player.Key(), out int grenadesLeft) && grenadesLeft > 1 && SkillUtils.ThrewGrenadeRecently(player))
+                SkillUtils.UpdateGrenadeCount(player, CsItem.HEGrenade, grenadesLeft);
+        }
+
+        public static void WeaponPickup(EventItemPickup @event)
+        {
+            var player = PlayerManager.GetPlayerEvent(@event.Userid);
+            if (player == null || !player.IsValid) return;
+
+            var weapon = @event.Item;
+            if (string.IsNullOrEmpty(weapon) || weapon != "hegrenade") return;
+
+            if (playersWithSkill.TryGetValue(player.Key(), out int grenadesLeft))
+                playersWithSkill[player.Key()] = SkillUtils.ClampGrenadeAfterPickup(player, CsItem.HEGrenade, grenadesLeft);
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            if (player == null || !player.IsValid) return;
+
+            int grenadeLimit = SkillsInfo.GetValue<int>(skillName, "grenadeLimit");
+            SkillUtils.TryGiveWeapon(player, CsItem.HEGrenade);
+            playersWithSkill[player.Key()] = grenadeLimit;
+
+            SkillUtils.UpdateGrenadeCount(player, CsItem.HEGrenade, grenadeLimit);
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            if (player == null || !player.IsValid) return;
+
+            playersWithSkill.TryRemove(player.Key(), out _);
+            SkillUtils.UpdateGrenadeCount(player, CsItem.HEGrenade, 1);
+        }
+
+        public class SkillConfig(Skills skill = skillName, bool active = true, string color = "#8f6dc9", CsTeam onlyTeam = CsTeam.None, bool disableOnFreezeTime = false, bool needsTeammates = false, string requiredPermission = "", float? hudDuration = null, float? descriptionHudDuration = null, int maxPerServer = -1, Rarity rarity = Rarity.Common, int grenadeLimit = 2) : SkillsInfo.DefaultSkillInfo(skill, active, color, onlyTeam, disableOnFreezeTime, needsTeammates, requiredPermission, hudDuration, descriptionHudDuration, maxPerServer, rarity)
+        {
+            public int GrenadeLimit { get; set; } = grenadeLimit;
+        }
+    }
+}
