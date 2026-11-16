@@ -2,7 +2,6 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Utils;
 using static src.jRandomSkills;
-using System.Collections.Concurrent;
 using src.utils;
 
 namespace src.player.skills
@@ -15,6 +14,16 @@ namespace src.player.skills
         public static void LoadSkill()
         {
             SkillUtils.RegisterSkill(skillName, SkillsInfo.GetValue<string>(skillName, "color"));
+        }
+
+        public static void EnableSkill(CCSPlayerController player)
+        {
+            SkillUtils.SetSkillHud(player, "hermit_hud", SkillsInfo.GetValue<int>(skillName, "healthToAdd"));
+        }
+
+        public static void DisableSkill(CCSPlayerController player)
+        {
+            SkillUtils.ResetPrintHTML(player);
         }
 
         public static void PlayerDeath(EventPlayerDeath @event)

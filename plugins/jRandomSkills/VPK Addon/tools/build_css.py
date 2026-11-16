@@ -407,6 +407,13 @@ def build(found):
         out.append(f'.js-skill.{cls}\n{{\n\tborder-left: 4px solid {color};\n}}\n')
     for pct in range(101):
         out.append(f'.js-skill.cd-{pct} .js-cd\n{{\n\twidth: {pct}%;\n}}\n')
+    # HUD position (jRandomSkills 1.2.4.b8+: PanoramaHud.yOffset / ySpecOffset / xOffset), same rules as upstream.
+    # They come after BASE, so they win over its margin-bottom; with an older plugin they are never set and
+    # BASE (16px, is-spec 86px) stays in charge.
+    for y in range(0, 51):
+        out.append(f'.yOffset-{y} {{ margin-bottom: {y}%; }}\n')
+    for x in range(-100, 101):
+        out.append(f'.xOffset-{x} {{ margin-left: {x}%; }}\n')
     return '\n'.join(out)
 
 

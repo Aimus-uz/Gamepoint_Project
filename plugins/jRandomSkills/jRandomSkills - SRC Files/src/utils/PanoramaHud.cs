@@ -15,6 +15,7 @@ namespace src.utils
         private const string MenuId = "js-menu";
         private const string OffClass = "js-off";
         private const int SegmentSlots = 4;
+        private const int OneLineChars = 30;
         private const int CurseSlots = 5;
         private const int MenuSlots = 10;
         private const int HideAfterTicks = 12;
@@ -77,7 +78,18 @@ namespace src.utils
         {
             if (!Enabled || player == null || !player.IsValid || player.IsBot || player.IsHLTV) return false;
             if (player.Connected != PlayerConnectedState.Connected) return false;
-            return EnsureLayout();
+            
+            bool ensure = EnsureLayout();
+            if (!ensure) return false;
+
+            return ensure;
+        }
+
+        private static int GetOffset(bool isYOffset, int? value = null)
+        {
+            int configOffset = isYOffset ? Config.LoadedConfig.PanoramaHud?.yOffset ?? 0 : Config.LoadedConfig.PanoramaHud?.xOffset ?? 0;
+            if (value.HasValue) configOffset = value.Value;
+            return int.Clamp(configOffset, isYOffset ? 0 : -100, isYOffset ? 50: 100);
         }
 
         private static bool EnsureLayout()
@@ -243,6 +255,18 @@ namespace src.utils
             {
                 segments[0] = (segments[0].Text.TrimStart(), segments[0].Color);
                 segments[^1] = (segments[^1].Text.TrimEnd(), segments[^1].Color);
+            }
+
+            if (segments.Count > 1)
+            {
+                int length = 0;
+                foreach (var segment in segments) length += segment.Text.Length;
+                if (length > OneLineChars)
+                {
+                    string joined = string.Concat(segments.Select(segment => segment.Text));
+                    segments.Clear();
+                    segments.Add((joined, ""));
+                }
             }
             return segments;
         }
@@ -426,8 +450,15 @@ namespace src.utils
                 if (!Active(player)) continue;
 
                 var view = GetView(player);
-                SetClass(player, view, ScopeId, "is-spec", !IsAlive(player));
+
+                SetClass(player, view, ScopeId, $"yOffset-{GetOffset(true, Config.LoadedConfig.PanoramaHud?.ySpecOffset)}", !IsAlive(player));
                 TickMenu(player, view, tick);
+
+                SetClass(player, GetView(player), "js-skill", $"yOffset-{GetOffset(true)}", IsAlive(player));
+                SetClass(player, GetView(player), "js-skill", $"xOffset-{GetOffset(false)}", true);
+
+                SetClass(player, GetView(player), "js-menu", $"yOffset-{GetOffset(true)}", IsAlive(player));
+                SetClass(player, GetView(player), "js-menu", $"xOffset-{GetOffset(false)}", true);
 
                 if (view.SkillShown && tick - view.LastSkillTick > HideAfterTicks)
                 {
